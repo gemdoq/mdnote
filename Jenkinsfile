@@ -22,19 +22,16 @@ pipeline {
             }
         }
 
-        stage('Frontend Build') {
+        stage('Docker Build & Deploy') {
             steps {
-                dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
+                sh 'docker compose down || true'
+                sh 'docker compose up -d --build'
             }
         }
 
-        stage('Docker Build & Deploy') {
+        stage('Cleanup') {
             steps {
-                sh 'docker compose down'
-                sh 'docker compose up -d --build'
+                sh 'docker image prune -f'
             }
         }
     }

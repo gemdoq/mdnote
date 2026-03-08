@@ -2,7 +2,7 @@ spring:
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mdnote}
     driver-class-name: org.postgresql.Driver
-    username: ${DATABASE_USERNAME:mdnote}
-    password: ${DATABASE_PASSWORD:mdnote}
+    username: ${DATABASE_USERNAME:dbuser}
+    password: ${DATABASE_PASSWORD:}
   jpa:
     show-sql: false
