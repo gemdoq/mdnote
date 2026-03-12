@@ -57,9 +57,12 @@ export default function SettingsPage() {
               <li><strong>Generate new token</strong> 버튼을 클릭합니다.</li>
               <li><strong>Token name</strong>: 원하는 이름 입력 (예: mdnote)</li>
               <li><strong>Expiration</strong>: 토큰 만료일을 선택합니다. (최대 1년)</li>
+              <li><strong>Description</strong>: 비워두어도 됩니다.</li>
+              <li><strong>Resource owner</strong>: 기본값 그대로 두면 됩니다. (본인 계정이 자동 선택됨)</li>
               <li><strong>Repository access</strong>: <strong>"Only select repositories"</strong>를 선택하고, 위에서 만든 저장소를 선택합니다.</li>
-              <li><strong>Permissions</strong> 섹션에서 <strong>"Repository permissions"</strong>를 펼칩니다.</li>
-              <li><strong>Contents</strong> 항목을 찾아 <strong>"Read and write"</strong>로 변경합니다.</li>
+              <li><strong>Permissions</strong> 섹션에서 <strong>"+ Add permissions"</strong> 버튼을 클릭합니다.</li>
+              <li><strong>"Select repository permissions"</strong> 목록이 나타나면, 체크박스 중 <strong>Contents</strong>를 체크합니다.</li>
+              <li>추가된 Contents 항목의 <strong>"Access: Read-only"</strong> 셀렉트박스를 클릭하여 <strong>"Read and write"</strong>로 변경합니다. <strong>"Access: Read and write"</strong>로 표시되는지 확인하세요.</li>
               <li>나머지 권한은 건드리지 않아도 됩니다.</li>
               <li>하단의 <strong>"Generate token"</strong> 버튼을 클릭합니다.</li>
               <li>생성된 토큰(<code>github_pat_...</code>)을 복사하여 아래에 붙여넣습니다. 이 토큰은 한 번만 표시되니 바로 붙여넣어주세요.</li>
