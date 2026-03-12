@@ -42,18 +42,37 @@ export default function SettingsPage() {
 
       <section className="settings-section">
         <h3>GitHub 연동</h3>
-        <p className="settings-help">
-          GitHub Personal Access Token이 필요합니다.
-          GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens에서
-          생성할 수 있습니다. repo 권한(Contents read/write)이 필요합니다.
-        </p>
+        <details className="token-guide">
+          <summary className="token-guide-toggle">토큰 발급 가이드 (펼쳐서 보기)</summary>
+          <div className="token-guide-content">
+            <p className="guide-title">사전 준비</p>
+            <ol>
+              <li>GitHub 계정이 없다면 <a href="https://github.com/signup" target="_blank" rel="noopener noreferrer">github.com/signup</a>에서 가입합니다.</li>
+              <li>노트를 저장할 저장소(repository)를 하나 만듭니다. 저장소 이름은 자유롭게 지정하세요. (예: my-notes)</li>
+            </ol>
+
+            <p className="guide-title">토큰 발급 방법</p>
+            <ol>
+              <li>GitHub에 로그인한 상태에서 <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener noreferrer">Fine-grained token 발급 페이지</a>로 이동합니다.</li>
+              <li><strong>Generate new token</strong> 버튼을 클릭합니다.</li>
+              <li><strong>Token name</strong>: 원하는 이름 입력 (예: mdnote)</li>
+              <li><strong>Expiration</strong>: 토큰 만료일을 선택합니다. (최대 1년)</li>
+              <li><strong>Repository access</strong>: <strong>"Only select repositories"</strong>를 선택하고, 위에서 만든 저장소를 선택합니다.</li>
+              <li><strong>Permissions</strong> 섹션에서 <strong>"Repository permissions"</strong>를 펼칩니다.</li>
+              <li><strong>Contents</strong> 항목을 찾아 <strong>"Read and write"</strong>로 변경합니다.</li>
+              <li>나머지 권한은 건드리지 않아도 됩니다.</li>
+              <li>하단의 <strong>"Generate token"</strong> 버튼을 클릭합니다.</li>
+              <li>생성된 토큰(<code>github_pat_...</code>)을 복사하여 아래에 붙여넣습니다. 이 토큰은 한 번만 표시되니 바로 붙여넣어주세요.</li>
+            </ol>
+          </div>
+        </details>
         {message && <div className="success-message">{message}</div>}
         <form onSubmit={handleSubmit}>
           <label>
             GitHub Token
             <input
               type="password"
-              placeholder={profile?.hasGithubToken ? '(설정됨 - 변경하려면 입력)' : 'ghp_...'}
+              placeholder={profile?.hasGithubToken ? '(설정됨 - 변경하려면 입력)' : 'github_pat_...'}
               value={githubToken}
               onChange={(e) => setGithubToken(e.target.value)}
               required={!profile?.hasGithubToken}

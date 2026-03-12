@@ -390,6 +390,74 @@ button {
   margin-bottom: 16px !important;
 }
 
+.token-guide {
+  margin-bottom: 16px;
+}
+
+.token-guide-toggle {
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 0;
+  list-style: none;
+}
+
+.token-guide-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.token-guide-toggle::before {
+  content: '> ';
+  font-family: monospace;
+}
+
+.token-guide[open] > .token-guide-toggle::before {
+  content: 'v ';
+}
+
+.token-guide-content {
+  margin-top: 12px;
+  padding: 16px;
+  background-color: var(--bg-primary);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.token-guide-content .guide-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.token-guide-content .guide-title:first-child {
+  margin-top: 0;
+}
+
+.token-guide-content ol {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+
+.token-guide-content li {
+  margin-bottom: 6px;
+}
+
+.token-guide-content code {
+  background-color: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.token-guide-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .settings-section label {
   display: block;
   font-size: 14px;
