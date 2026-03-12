@@ -173,6 +173,30 @@ button {
   margin-bottom: 24px;
 }
 
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .auth-link {
   margin-top: 16px;
   color: var(--text-secondary);

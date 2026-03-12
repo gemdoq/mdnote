@@ -1,17 +1,37 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+
+const SAVED_USERNAME_KEY = 'savedUsername'
+const REMEMBER_USERNAME_KEY = 'rememberUsername'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberUsername, setRememberUsername] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const { login } = useAuth()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const saved = localStorage.getItem(REMEMBER_USERNAME_KEY)
+    if (saved === 'true') {
+      setRememberUsername(true)
+      setUsername(localStorage.getItem(SAVED_USERNAME_KEY) || '')
+    }
+  }, [])
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    const err = await login({ username, password })
+    if (rememberUsername) {
+      localStorage.setItem(SAVED_USERNAME_KEY, username)
+      localStorage.setItem(REMEMBER_USERNAME_KEY, 'true')
+    } else {
+      localStorage.removeItem(SAVED_USERNAME_KEY)
+      localStorage.removeItem(REMEMBER_USERNAME_KEY)
+    }
+    const err = await login({ username, password, rememberMe })
     if (err) {
       setError(err)
     } else {
@@ -40,6 +60,24 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <div className="login-options">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={rememberUsername}
+                onChange={(e) => setRememberUsername(e.target.checked)}
+              />
+              아이디 기억
+            </label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              자동 로그인
+            </label>
+          </div>
           <button type="submit" className="btn-primary">로그인</button>
         </form>
         <p className="auth-link">

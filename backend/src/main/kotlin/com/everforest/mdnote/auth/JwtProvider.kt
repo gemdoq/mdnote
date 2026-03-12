@@ -17,9 +17,14 @@ class JwtProvider(
         Keys.hmacShaKeyFor(secret.toByteArray())
     }
 
-    fun generateToken(userId: Long, username: String): String {
+    companion object {
+        private const val REMEMBER_ME_EXPIRATION = 30L * 24 * 60 * 60 * 1000 // 30일
+    }
+
+    fun generateToken(userId: Long, username: String, rememberMe: Boolean = false): String {
         val now = Date()
-        val expiryDate = Date(now.time + expiration)
+        val exp = if (rememberMe) REMEMBER_ME_EXPIRATION else expiration
+        val expiryDate = Date(now.time + exp)
 
         return Jwts.builder()
             .subject(userId.toString())

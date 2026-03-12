@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { login as apiLogin, register as apiRegister, type LoginRequest, type RegisterRequest } from '../api/auth'
+import { getToken, clearToken } from '../api/client'
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -17,8 +18,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const savedUsername = localStorage.getItem('username')
+    const token = getToken()
+    const savedUsername = localStorage.getItem('username') || sessionStorage.getItem('username')
     if (token && savedUsername) {
       setUsername(savedUsername)
     }
@@ -29,8 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await apiLogin(data)
       if (res.data.token) {
-        localStorage.setItem('token', res.data.token)
-        localStorage.setItem('username', res.data.username!)
+        const storage = data.rememberMe ? localStorage : sessionStorage
+        storage.setItem('token', res.data.token)
+        storage.setItem('username', res.data.username!)
+        if (!data.rememberMe) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('username')
+        }
         setUsername(res.data.username!)
         return null
       }
@@ -56,8 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('username')
+    clearToken()
     setUsername(null)
   }
 

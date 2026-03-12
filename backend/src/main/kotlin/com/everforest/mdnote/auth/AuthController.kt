@@ -55,7 +55,7 @@ class AuthController(
                 UsernamePasswordAuthenticationToken(request.username, request.password)
             )
             val user = userRepository.findByUsername(request.username).get()
-            val token = jwtProvider.generateToken(user.id, user.username)
+            val token = jwtProvider.generateToken(user.id, user.username, request.rememberMe)
             ResponseEntity.ok(AuthResponse(token = token, username = user.username))
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.UNAUTHORIZED)
