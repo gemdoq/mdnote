@@ -1,5 +1,6 @@
 package com.everforest.mdnote.user
 
+import com.everforest.mdnote.config.EncryptedStringConverter
 import jakarta.persistence.*
 
 @Entity
@@ -18,6 +19,7 @@ class User(
     @Column(unique = true, nullable = false)
     val email: String,
 
+    @Convert(converter = EncryptedStringConverter::class)
     @Column(name = "github_token")
     var githubToken: String? = null,
 

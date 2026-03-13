@@ -64,6 +64,20 @@ class GitHubApiClient(
         restTemplate.exchange(url, HttpMethod.DELETE, HttpEntity(body, headers), Void::class.java)
     }
 
+    fun uploadImage(token: String, repo: String, filename: String, fileBytes: ByteArray): String {
+        val path = "images/$filename"
+        val url = "$apiUrl/repos/$repo/contents/$path"
+        val headers = authHeaders(token)
+        val body = mapOf(
+            "message" to "images: $filename 업로드",
+            "content" to Base64.getEncoder().encodeToString(fileBytes)
+        )
+        restTemplate.exchange(url, HttpMethod.PUT, HttpEntity(body, headers), GitHubMutationResponse::class.java)
+        val owner = repo.split("/")[0]
+        val repoName = repo.split("/")[1]
+        return "https://raw.githubusercontent.com/$owner/$repoName/main/$path"
+    }
+
     fun searchFiles(token: String, repo: String, query: String): List<GitHubFile> {
         val url = "$apiUrl/search/code?q=$query+extension:md+repo:$repo"
         val headers = authHeaders(token)

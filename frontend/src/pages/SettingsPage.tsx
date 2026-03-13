@@ -1,12 +1,13 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { getProfile, updateGitHubSettings, type UserProfile } from '../api/user'
+import { useToast } from '../contexts/ToastContext'
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [githubToken, setGithubToken] = useState('')
   const [githubRepo, setGithubRepo] = useState('')
-  const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
 
   useEffect(() => {
     getProfile()
@@ -21,10 +22,10 @@ export default function SettingsPage() {
     e.preventDefault()
     try {
       await updateGitHubSettings({ githubToken, githubRepo })
-      setMessage('설정이 저장되었습니다.')
+      showToast('설정이 저장되었습니다.', 'success')
       setGithubToken('')
     } catch {
-      setMessage('설정 저장에 실패했습니다.')
+      showToast('설정 저장에 실패했습니다.', 'error')
     }
   }
 
@@ -69,7 +70,6 @@ export default function SettingsPage() {
             </ol>
           </div>
         </details>
-        {message && <div className="success-message">{message}</div>}
         <form onSubmit={handleSubmit}>
           <label>
             GitHub Token
