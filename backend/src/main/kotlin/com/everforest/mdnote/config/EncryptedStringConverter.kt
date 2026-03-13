@@ -15,6 +15,12 @@ class EncryptedStringConverter(
     }
 
     override fun convertToEntityAttribute(dbData: String?): String? {
-        return dbData?.let { encryptionUtil.decrypt(it) }
+        return dbData?.let {
+            try {
+                encryptionUtil.decrypt(it)
+            } catch (e: Exception) {
+                it
+            }
+        }
     }
 }
