@@ -237,7 +237,9 @@ button {
 }
 
 .btn-search-style {
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
 }
 
@@ -665,31 +667,28 @@ button {
   color: white;
 }
 
-/* Editor Tabs */
-.editor-tabs {
+/* Mode Toggle */
+.mode-toggle {
   display: flex;
-  gap: 0;
-  margin-bottom: 0;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 12px 24px;
-  background-color: transparent;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  background-color: var(--bg-secondary);
   color: var(--text-secondary);
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   min-height: 44px;
   transition: all 0.2s;
 }
 
-.tab-btn.tab-active {
-  background-color: var(--bg-card);
+.mode-toggle:hover {
+  border-color: var(--accent);
   color: var(--text-primary);
-  border-bottom: 2px solid var(--accent);
 }
 
 .preview-body {
