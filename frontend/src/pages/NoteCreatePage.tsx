@@ -111,13 +111,17 @@ export default function NoteCreatePage() {
           </p>
         )}
 
-        <button
-          type="button"
-          className="mode-toggle"
-          onClick={() => setActiveTab(activeTab === 'edit' ? 'preview' : 'edit')}
-        >
-          {activeTab === 'edit' ? '👁 미리보기' : '✏️ 편집'}
-        </button>
+        <div className="toggle-switch-wrapper">
+          <span className={`toggle-label ${activeTab === 'edit' ? 'toggle-label-active' : ''}`}>✏️ 편집</span>
+          <button
+            type="button"
+            className={`toggle-switch ${activeTab === 'preview' ? 'toggle-on' : ''}`}
+            onClick={() => setActiveTab(activeTab === 'edit' ? 'preview' : 'edit')}
+          >
+            <span className="toggle-knob" />
+          </button>
+          <span className={`toggle-label ${activeTab === 'preview' ? 'toggle-label-active' : ''}`}>👁 미리보기</span>
+        </div>
 
         {activeTab === 'edit' ? (
           <>
