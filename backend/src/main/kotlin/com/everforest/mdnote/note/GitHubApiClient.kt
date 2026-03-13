@@ -1,6 +1,8 @@
 package com.everforest.mdnote.note
 
+import com.everforest.mdnote.note.dto.NoteHistoryResponse
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.*
@@ -85,6 +87,20 @@ class GitHubApiClient(
         return response.body?.items ?: emptyList()
     }
 
+    fun getFileHistory(token: String, repo: String, filename: String): List<NoteHistoryResponse> {
+        val url = "$apiUrl/repos/$repo/commits?path=$filename"
+        val headers = authHeaders(token)
+        val response = restTemplate.exchange(url, HttpMethod.GET, HttpEntity<Void>(headers), Array<GitHubCommitResponse>::class.java)
+        return response.body?.map { commit ->
+            NoteHistoryResponse(
+                sha = commit.sha,
+                message = commit.commit.message,
+                date = commit.commit.author.date,
+                author = commit.commit.author.name
+            )
+        } ?: emptyList()
+    }
+
     private fun authHeaders(token: String): HttpHeaders {
         val headers = HttpHeaders()
         headers.setBearerAuth(token)
@@ -107,3 +123,21 @@ data class GitHubSearchResponse(val items: List<GitHubFile>)
 
 data class GitHubFileContent(val content: String, val sha: String)
 data class GitHubFileResult(val sha: String)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class GitHubCommitResponse(
+    val sha: String,
+    val commit: GitHubCommitDetail
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class GitHubCommitDetail(
+    val message: String,
+    val author: GitHubCommitAuthor
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class GitHubCommitAuthor(
+    val name: String,
+    val date: String
+)

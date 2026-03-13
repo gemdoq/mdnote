@@ -6,10 +6,12 @@ import type { EditorView } from '@codemirror/view'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { getNote, updateNote } from '../api/notes'
+import { getNote, updateNote, uploadImage } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import ConfirmModal from '../components/ConfirmModal'
 import MarkdownToolbar from '../components/MarkdownToolbar'
+import { NoteViewSkeleton } from '../components/Skeleton'
+import { useTheme } from '../contexts/ThemeContext'
 
 export default function NoteEditPage() {
   const { filename } = useParams<{ filename: string }>()
@@ -20,9 +22,12 @@ export default function NoteEditPage() {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
   const [showDraftModal, setShowDraftModal] = useState(false)
   const [draftContent, setDraftContent] = useState<string | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const editorViewRef = useRef<EditorView | null>(null)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { theme } = useTheme()
 
   const draftKey = filename ? `draft-edit-${filename}` : ''
 
@@ -33,7 +38,6 @@ export default function NoteEditPage() {
         setContent(res.data.content)
         setSha(res.data.sha)
 
-        // 드래프트 확인
         const draft = localStorage.getItem(draftKey)
         if (draft && draft !== res.data.content) {
           setDraftContent(draft)
@@ -44,7 +48,7 @@ export default function NoteEditPage() {
       .finally(() => setLoading(false))
   }, [filename, navigate])
 
-  // 자동저장 (5초마다)
+  // 자동저장
   const contentRef = useRef(content)
   contentRef.current = content
 
@@ -55,6 +59,54 @@ export default function NoteEditPage() {
     }, 5000)
     return () => clearInterval(timer)
   }, [draftKey])
+
+  // 클립보드 이미지 붙여넣기
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (!file || !editorViewRef.current) return
+
+          try {
+            showToast('이미지 업로드 중...', 'info')
+            const res = await uploadImage(file)
+            const view = editorViewRef.current
+            const { from, to } = view.state.selection.main
+            const insert = `![이미지](${res.data.url})`
+            view.dispatch({
+              changes: { from, to, insert },
+              selection: { anchor: from + insert.length }
+            })
+            showToast('이미지가 업로드되었습니다.', 'success')
+          } catch {
+            showToast('이미지 업로드에 실패했습니다.', 'error')
+          }
+          break
+        }
+      }
+    }
+
+    container.addEventListener('paste', handlePaste)
+    return () => container.removeEventListener('paste', handlePaste)
+  }, [showToast])
+
+  // 풀스크린 토글
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.classList.add('fullscreen-editor')
+    } else {
+      document.body.classList.remove('fullscreen-editor')
+    }
+    return () => document.body.classList.remove('fullscreen-editor')
+  }, [isFullscreen])
 
   const handleRestoreDraft = () => {
     if (draftContent) setContent(draftContent)
@@ -88,37 +140,67 @@ export default function NoteEditPage() {
     editorViewRef.current = view
   }, [])
 
-  if (loading) return <div className="loading">로딩 중...</div>
+  // 글자 수 / 단어 수
+  const charCount = content.length
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+
+  if (loading) return <NoteViewSkeleton />
 
   return (
-    <div className="note-edit-page">
-      <div className="edit-header">
-        <h2>{filename}</h2>
-      </div>
+    <div className={`note-edit-page ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+      {isFullscreen && (
+        <div className="fullscreen-bar">
+          <span className="fullscreen-filename">{filename}</span>
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="btn-edit"
+            aria-label="전체화면 해제"
+          >
+            전체화면 해제
+          </button>
+        </div>
+      )}
+
+      {!isFullscreen && (
+        <div className="edit-header">
+          <h2>{filename}</h2>
+          <button
+            onClick={() => setIsFullscreen(true)}
+            className="btn-edit"
+            aria-label="전체화면 편집"
+          >
+            전체화면
+          </button>
+        </div>
+      )}
 
       <div className="toggle-switch-wrapper">
-        <span className={`toggle-label ${activeTab === 'edit' ? 'toggle-label-active' : ''}`}>✏️ 편집</span>
+        <span className={`toggle-label ${activeTab === 'edit' ? 'toggle-label-active' : ''}`}>{'\u270F\uFE0F'} 편집</span>
         <button
           className={`toggle-switch ${activeTab === 'preview' ? 'toggle-on' : ''}`}
           onClick={() => setActiveTab(activeTab === 'edit' ? 'preview' : 'edit')}
+          aria-label={activeTab === 'edit' ? '미리보기로 전환' : '편집으로 전환'}
         >
           <span className="toggle-knob" />
         </button>
-        <span className={`toggle-label ${activeTab === 'preview' ? 'toggle-label-active' : ''}`}>👁 미리보기</span>
+        <span className={`toggle-label ${activeTab === 'preview' ? 'toggle-label-active' : ''}`}>{'\uD83D\uDC41'} 미리보기</span>
       </div>
 
       {activeTab === 'edit' ? (
-        <>
+        <div ref={editorContainerRef}>
           <MarkdownToolbar editorView={editorViewRef.current} />
           <CodeMirror
             value={content}
             extensions={[markdown()]}
             onChange={setContent}
-            height="calc(100vh - 280px)"
-            theme="dark"
+            height={isFullscreen ? 'calc(100vh - 180px)' : 'calc(100vh - 280px)'}
+            theme={theme === 'dark' ? 'dark' : 'light'}
             onCreateEditor={handleEditorCreate}
           />
-        </>
+          <div className="char-counter" aria-label="글자 수 카운터">
+            {charCount}자 · {wordCount}단어
+          </div>
+        </div>
       ) : (
         <article className="markdown-body preview-body">
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
@@ -128,10 +210,10 @@ export default function NoteEditPage() {
       )}
 
       <div className="editor-bottom-actions">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+        <button onClick={handleSave} disabled={saving} className="btn-primary" aria-label="노트 저장">
           {saving ? '저장 중...' : '저장'}
         </button>
-        <button onClick={() => navigate(-1)} className="btn-cancel">취소</button>
+        <button onClick={() => navigate(-1)} className="btn-cancel" aria-label="편집 취소">취소</button>
       </div>
 
       <ConfirmModal

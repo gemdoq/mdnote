@@ -13,6 +13,10 @@ class UserController(
     private val userRepository: UserRepository
 ) {
 
+    companion object {
+        private val GITHUB_REPO_PATTERN = Regex("^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$")
+    }
+
     @GetMapping("/me")
     fun getProfile(@AuthenticationPrincipal user: UserDetails): ResponseEntity<UserProfileResponse> {
         val u = userRepository.findById(user.username.toLong()).get()
@@ -31,6 +35,9 @@ class UserController(
         @AuthenticationPrincipal user: UserDetails,
         @RequestBody request: GitHubSettingsRequest
     ): ResponseEntity<Void> {
+        if (!GITHUB_REPO_PATTERN.matches(request.githubRepo)) {
+            throw IllegalArgumentException("올바르지 않은 GitHub 저장소 형식입니다. 'owner/repo' 형식이어야 합니다.")
+        }
         val u = userRepository.findById(user.username.toLong()).get()
         u.githubToken = request.githubToken
         u.githubRepo = request.githubRepo

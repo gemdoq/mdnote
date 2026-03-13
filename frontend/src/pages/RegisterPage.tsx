@@ -25,7 +25,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         <h1>mdnote</h1>
         <p className="auth-subtitle">회원가입</p>
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message" role="alert">{error}</div>}
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -34,6 +34,7 @@ export default function RegisterPage() {
             onChange={(e) => setUsername(e.target.value)}
             required
             minLength={3}
+            aria-label="사용자명"
           />
           <input
             type="email"
@@ -41,6 +42,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            aria-label="이메일"
           />
           <input
             type="password"
@@ -49,8 +51,9 @@ export default function RegisterPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
+            aria-label="비밀번호"
           />
-          <button type="submit" className="btn-primary">회원가입</button>
+          <button type="submit" className="btn-primary" aria-label="회원가입">회원가입</button>
         </form>
         <p className="auth-link">
           이미 계정이 있으신가요? <Link to="/login">로그인</Link>

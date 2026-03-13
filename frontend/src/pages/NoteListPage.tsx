@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { listNotes, searchNotes, pinNote, type NoteListItem } from '../api/notes'
+import { listNotes, searchNotes, pinNote, deleteNote, type NoteListItem } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
+import { NoteListSkeleton } from '../components/Skeleton'
+import ConfirmModal from '../components/ConfirmModal'
 
 const SORT_OPTIONS = [
   { label: '최신순', sort: 'date', order: 'desc' },
@@ -11,45 +13,79 @@ const SORT_OPTIONS = [
 ]
 
 const CACHE_KEY = 'cache-note-list'
+const PAGE_SIZE = 20
 
 export default function NoteListPage() {
   const [notes, setNotes] = useState<NoteListItem[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [sortIndex, setSortIndex] = useState(0)
+  const [page, setPage] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const { showToast } = useToast()
 
-  // Pull-to-refresh 상태
+  // Pull-to-refresh
   const [pulling, setPulling] = useState(false)
   const [pullDistance, setPullDistance] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const touchStartY = useRef(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // 스와이프 상태
+  const [swipingIndex, setSwipingIndex] = useState<number | null>(null)
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const swipeStartX = useRef(0)
+  const swipeStartY = useRef(0)
+  const swipeDirection = useRef<'horizontal' | 'vertical' | null>(null)
+
+  // 삭제 모달
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
+  // 무한 스크롤 감지
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
   const sortedNotes = useCallback((items: NoteListItem[]) => {
-    // 고정된 노트를 항상 상단에
     const pinned = items.filter((n) => n.pinned)
     const unpinned = items.filter((n) => !n.pinned)
     return [...pinned, ...unpinned]
   }, [])
 
-  const fetchNotes = async (showLoading = true) => {
+  const fetchNotes = async (pageNum: number = 0, append: boolean = false, showLoading: boolean = true) => {
     try {
-      if (showLoading) setLoading(true)
-      const { sort, order } = SORT_OPTIONS[sortIndex]
-      const res = query
-        ? await searchNotes(query)
-        : await listNotes(sort, order)
-      const sorted = sortedNotes(res.data)
-      setNotes(sorted)
-      setError('')
-      // 캐시 저장
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(sorted))
-      } catch { /* 무시 */ }
+      if (!append && showLoading) setLoading(true)
+      if (append) setLoadingMore(true)
+
+      if (query) {
+        const res = await searchNotes(query)
+        const sorted = sortedNotes(res.data)
+        setNotes(sorted)
+        setTotalElements(sorted.length)
+        setHasMore(false)
+        setError('')
+      } else {
+        const { sort, order } = SORT_OPTIONS[sortIndex]
+        const res = await listNotes(sort, order, pageNum, PAGE_SIZE)
+        const newItems = res.data.content
+        if (append) {
+          setNotes((prev) => sortedNotes([...prev, ...newItems]))
+        } else {
+          setNotes(sortedNotes(newItems))
+        }
+        setTotalElements(res.data.totalElements)
+        setPage(res.data.page)
+        setHasMore(res.data.page < res.data.totalPages - 1)
+        setError('')
+        // 캐시 저장 (첫 페이지만)
+        if (!append) {
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify(sortedNotes(newItems)))
+          } catch { /* 무시 */ }
+        }
+      }
     } catch {
-      // 오프라인 - 캐시에서 로드
       const cached = localStorage.getItem(CACHE_KEY)
       if (cached) {
         try {
@@ -63,17 +99,35 @@ export default function NoteListPage() {
       }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
       setRefreshing(false)
     }
   }
 
   useEffect(() => {
-    fetchNotes()
+    setPage(0)
+    fetchNotes(0, false)
   }, [sortIndex])
+
+  // 무한 스크롤 IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchNotes(page + 1, true, false)
+        }
+      },
+      { threshold: 0.1 }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, page, sortIndex, query])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchNotes()
+    setPage(0)
+    fetchNotes(0, false)
   }
 
   const handlePin = async (e: React.MouseEvent, filename: string) => {
@@ -92,7 +146,19 @@ export default function NoteListPage() {
     }
   }
 
-  // Pull-to-refresh 핸들러
+  const handleDelete = async (filename: string) => {
+    try {
+      await deleteNote(filename)
+      setNotes((prev) => prev.filter((n) => n.filename !== filename))
+      setTotalElements((prev) => prev - 1)
+      showToast('노트가 삭제되었습니다.', 'success')
+    } catch {
+      showToast('삭제에 실패했습니다.', 'error')
+    }
+    setDeleteTarget(null)
+  }
+
+  // Pull-to-refresh
   const handleTouchStart = (e: React.TouchEvent) => {
     if (containerRef.current && containerRef.current.scrollTop === 0) {
       touchStartY.current = e.touches[0].clientY
@@ -111,10 +177,61 @@ export default function NoteListPage() {
   const handleTouchEnd = () => {
     if (pullDistance > 50) {
       setRefreshing(true)
-      fetchNotes(false)
+      setPage(0)
+      fetchNotes(0, false, false)
     }
     setPulling(false)
     setPullDistance(0)
+  }
+
+  // 스와이프 제스처
+  const handleSwipeStart = (e: React.TouchEvent, index: number) => {
+    swipeStartX.current = e.touches[0].clientX
+    swipeStartY.current = e.touches[0].clientY
+    swipeDirection.current = null
+    setSwipingIndex(index)
+    setSwipeOffset(0)
+  }
+
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    if (swipingIndex === null) return
+    const dx = e.touches[0].clientX - swipeStartX.current
+    const dy = e.touches[0].clientY - swipeStartY.current
+
+    if (swipeDirection.current === null) {
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        swipeDirection.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical'
+      }
+    }
+
+    if (swipeDirection.current === 'horizontal') {
+      e.preventDefault()
+      setSwipeOffset(Math.max(-120, Math.min(120, dx)))
+    }
+  }
+
+  const handleSwipeEnd = (note: NoteListItem) => {
+    if (swipeDirection.current === 'horizontal') {
+      if (swipeOffset < -60) {
+        // 왼쪽 스와이프 → 삭제
+        setDeleteTarget(note.filename)
+      } else if (swipeOffset > 60) {
+        // 오른쪽 스와이프 → 고정 토글
+        pinNote(note.filename).then((res) => {
+          setNotes((prev) =>
+            sortedNotes(prev.map((n) =>
+              n.filename === note.filename ? { ...n, pinned: res.data.pinned } : n
+            ))
+          )
+          showToast(res.data.pinned ? '노트가 고정되었습니다.' : '고정이 해제되었습니다.', 'success')
+        }).catch(() => {
+          showToast('고정 상태 변경에 실패했습니다.', 'error')
+        })
+      }
+    }
+    setSwipingIndex(null)
+    setSwipeOffset(0)
+    swipeDirection.current = null
   }
 
   const parseFilename = (filename: string) => {
@@ -125,7 +242,7 @@ export default function NoteListPage() {
     return { date: '', title: filename.replace('.md', '') }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>
+  if (loading) return <NoteListSkeleton />
 
   return (
     <div
@@ -135,7 +252,6 @@ export default function NoteListPage() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Pull-to-refresh 인디케이터 */}
       {(pullDistance > 0 || refreshing) && (
         <div className="pull-indicator" style={{ height: refreshing ? 40 : pullDistance }}>
           {refreshing ? '새로고침 중...' : pullDistance > 50 ? '놓으면 새로고침' : '당겨서 새로고침'}
@@ -148,13 +264,14 @@ export default function NoteListPage() {
           <span className="note-count">
             {query
               ? `${notes.length}개의 검색 결과`
-              : `${notes.length}개의 노트`}
+              : `${totalElements}개의 노트`}
           </span>
         </h2>
         <select
           className="sort-select"
           value={sortIndex}
           onChange={(e) => setSortIndex(Number(e.target.value))}
+          aria-label="정렬 기준"
         >
           {SORT_OPTIONS.map((opt, i) => (
             <option key={i} value={i}>{opt.label}</option>
@@ -168,9 +285,10 @@ export default function NoteListPage() {
           placeholder="검색..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label="노트 검색"
         />
-        <button type="submit">검색</button>
-        <Link to="/new" className="btn-search-style">새 노트</Link>
+        <button type="submit" aria-label="검색 실행">검색</button>
+        <Link to="/new" className="btn-search-style" aria-label="새 노트 만들기">새 노트</Link>
       </form>
 
       {error && <div className="error-message">{error}</div>}
@@ -182,15 +300,34 @@ export default function NoteListPage() {
         </div>
       ) : (
         <ul className="note-list">
-          {notes.map((note) => {
+          {notes.map((note, index) => {
             const { date, title } = parseFilename(note.filename)
+            const isSwiping = swipingIndex === index
+            const offset = isSwiping ? swipeOffset : 0
+
             return (
-              <li key={note.filename}>
-                <div className="note-item-wrapper">
+              <li key={note.filename} className="swipe-container">
+                {/* 스와이프 배경 */}
+                <div className="swipe-bg">
+                  <div className={`swipe-action swipe-action-right ${offset > 30 ? 'swipe-action-visible' : ''}`}>
+                    {note.pinned ? '고정 해제' : '고정'}
+                  </div>
+                  <div className={`swipe-action swipe-action-left ${offset < -30 ? 'swipe-action-visible' : ''}`}>
+                    삭제
+                  </div>
+                </div>
+                <div
+                  className="note-item-wrapper"
+                  style={{ transform: `translateX(${offset}px)`, transition: isSwiping ? 'none' : 'transform 0.3s ease' }}
+                  onTouchStart={(e) => handleSwipeStart(e, index)}
+                  onTouchMove={handleSwipeMove}
+                  onTouchEnd={() => handleSwipeEnd(note)}
+                >
                   <button
                     className="pin-btn"
                     onClick={(e) => handlePin(e, note.filename)}
                     title={note.pinned ? '고정 해제' : '고정'}
+                    aria-label={note.pinned ? '고정 해제' : '노트 고정'}
                   >
                     {note.pinned ? '\u2605' : '\u2606'}
                   </button>
@@ -213,6 +350,20 @@ export default function NoteListPage() {
           })}
         </ul>
       )}
+
+      {/* 무한 스크롤 감지 */}
+      <div ref={sentinelRef} className="scroll-sentinel" />
+      {loadingMore && (
+        <div className="loading-more">로딩 중...</div>
+      )}
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="노트 삭제"
+        message="정말 이 노트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }

@@ -3,9 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { getNote, deleteNote, pinNote, shareNote, unshareNote, type Note } from '../api/notes'
+import { getNote, deleteNote, pinNote, shareNote, unshareNote, exportNote, type Note } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import ConfirmModal from '../components/ConfirmModal'
+import HistoryModal from '../components/HistoryModal'
+import { NoteViewSkeleton } from '../components/Skeleton'
 
 const NOTE_CACHE_PREFIX = 'cache-note-'
 const MAX_CACHED_NOTES = 50
@@ -15,13 +17,11 @@ function cacheNote(filename: string, data: Note) {
     const key = `${NOTE_CACHE_PREFIX}${filename}`
     localStorage.setItem(key, JSON.stringify(data))
 
-    // LRU 관리: 캐시 키 목록 유지
     const cacheKeys: string[] = JSON.parse(localStorage.getItem('cache-note-keys') || '[]')
     const idx = cacheKeys.indexOf(key)
     if (idx !== -1) cacheKeys.splice(idx, 1)
     cacheKeys.push(key)
 
-    // 최대 50개 초과 시 오래된 것 삭제
     while (cacheKeys.length > MAX_CACHED_NOTES) {
       const oldest = cacheKeys.shift()
       if (oldest) localStorage.removeItem(oldest)
@@ -44,6 +44,7 @@ export default function NoteViewPage() {
   const [note, setNote] = useState<Note | null>(null)
   const [loading, setLoading] = useState(true)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [pinned, setPinned] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -57,7 +58,6 @@ export default function NoteViewPage() {
         cacheNote(filename, res.data)
       })
       .catch(() => {
-        // 오프라인 - 캐시에서 로드
         const cached = getCachedNote(filename)
         if (cached) {
           setNote(cached)
@@ -121,23 +121,44 @@ export default function NoteViewPage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>
+  const handleExport = async () => {
+    if (!filename) return
+    try {
+      const res = await exportNote(filename, 'html')
+      const blob = new Blob([res.data], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename.replace('.md', '.html')
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      showToast('내보내기가 완료되었습니다.', 'success')
+    } catch {
+      showToast('내보내기에 실패했습니다.', 'error')
+    }
+  }
+
+  if (loading) return <NoteViewSkeleton />
   if (!note) return null
 
   return (
     <div className="note-view-page">
       <div className="note-actions">
-        <Link to="/" className="btn-back">목록</Link>
+        <Link to="/" className="btn-back" aria-label="목록으로 돌아가기">목록</Link>
         <div>
-          <button onClick={handlePin} className="btn-edit" title={pinned ? '고정 해제' : '고정'}>
+          <button onClick={handlePin} className="btn-edit" title={pinned ? '고정 해제' : '고정'} aria-label={pinned ? '고정 해제' : '노트 고정'}>
             {pinned ? '\u2605' : '\u2606'}
           </button>
-          <button onClick={handleShare} className="btn-edit">공유</button>
+          <button onClick={() => setShowHistoryModal(true)} className="btn-edit" aria-label="버전 히스토리 보기">히스토리</button>
+          <button onClick={handleExport} className="btn-edit" aria-label="HTML로 내보내기">내보내기</button>
+          <button onClick={handleShare} className="btn-edit" aria-label="노트 공유">공유</button>
           {shareToken && (
-            <button onClick={handleUnshare} className="btn-delete">공유 해제</button>
+            <button onClick={handleUnshare} className="btn-delete" aria-label="공유 해제">공유 해제</button>
           )}
-          <Link to={`/notes/${encodeURIComponent(note.filename)}/edit`} className="btn-edit">편집</Link>
-          <button onClick={handleDelete} className="btn-delete">삭제</button>
+          <Link to={`/notes/${encodeURIComponent(note.filename)}/edit`} className="btn-edit" aria-label="노트 편집">편집</Link>
+          <button onClick={handleDelete} className="btn-delete" aria-label="노트 삭제">삭제</button>
         </div>
       </div>
 
@@ -162,6 +183,14 @@ export default function NoteViewPage() {
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
+
+      {filename && (
+        <HistoryModal
+          isOpen={showHistoryModal}
+          filename={filename}
+          onClose={() => setShowHistoryModal(false)}
+        />
+      )}
     </div>
   )
 }

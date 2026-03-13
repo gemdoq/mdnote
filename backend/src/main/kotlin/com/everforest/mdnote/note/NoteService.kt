@@ -2,6 +2,9 @@ package com.everforest.mdnote.note
 
 import com.everforest.mdnote.note.dto.*
 import com.everforest.mdnote.user.UserRepository
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
+import org.springframework.cache.annotation.Caching
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -15,6 +18,7 @@ class NoteService(
     private val sharedNoteRepository: SharedNoteRepository
 ) {
 
+    @Cacheable("noteList", key = "#userId")
     fun listNotes(userId: Long, sort: String = "date", order: String = "desc"): List<NoteListResponse> {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
@@ -37,6 +41,24 @@ class NoteService(
         return sorted.sortedByDescending { it.pinned }
     }
 
+    fun listNotesPaged(userId: Long, sort: String, order: String, page: Int, size: Int): NotePageResponse {
+        val allNotes = listNotes(userId, sort, order)
+        val totalElements = allNotes.size
+        val totalPages = if (totalElements == 0) 0 else (totalElements + size - 1) / size
+        val fromIndex = (page * size).coerceAtMost(totalElements)
+        val toIndex = ((page + 1) * size).coerceAtMost(totalElements)
+        val content = if (fromIndex < totalElements) allNotes.subList(fromIndex, toIndex) else emptyList()
+
+        return NotePageResponse(
+            content = content,
+            totalElements = totalElements,
+            totalPages = totalPages,
+            page = page,
+            size = size
+        )
+    }
+
+    @Cacheable("noteDetail", key = "#userId + '-' + #filename")
     fun getNote(userId: Long, filename: String): NoteResponse {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
@@ -54,6 +76,10 @@ class NoteService(
         )
     }
 
+    @Caching(evict = [
+        CacheEvict(value = ["noteList"], allEntries = true),
+        CacheEvict(value = ["noteDetail"], allEntries = true)
+    ])
     fun createNote(userId: Long, request: NoteCreateRequest): NoteResponse {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
@@ -67,6 +93,10 @@ class NoteService(
         return NoteResponse(filename = filename, content = request.content, sha = result.sha, tags = tags)
     }
 
+    @Caching(evict = [
+        CacheEvict(value = ["noteList"], allEntries = true),
+        CacheEvict(value = ["noteDetail"], allEntries = true)
+    ])
     fun updateNote(userId: Long, filename: String, request: NoteUpdateRequest): NoteResponse {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
@@ -79,6 +109,10 @@ class NoteService(
         return NoteResponse(filename = filename, content = request.content, sha = result.sha, tags = tags)
     }
 
+    @Caching(evict = [
+        CacheEvict(value = ["noteList"], allEntries = true),
+        CacheEvict(value = ["noteDetail"], allEntries = true)
+    ])
     fun deleteNote(userId: Long, filename: String) {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
@@ -159,6 +193,82 @@ class NoteService(
 
         val file = githubApiClient.getFileContent(githubToken, repo, shared.filename)
         return SharedNoteResponse(filename = shared.filename, content = file.content)
+    }
+
+    fun getNoteHistory(userId: Long, filename: String): List<NoteHistoryResponse> {
+        val user = userRepository.findById(userId)
+            .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
+
+        val token = user.githubToken ?: throw IllegalStateException("GitHub 토큰이 설정되지 않았습니다.")
+        val repo = user.githubRepo ?: throw IllegalStateException("GitHub 저장소가 설정되지 않았습니다.")
+
+        return githubApiClient.getFileHistory(token, repo, filename)
+    }
+
+    fun exportNoteAsHtml(userId: Long, filename: String): String {
+        val note = getNote(userId, filename)
+        val parser = org.commonmark.parser.Parser.builder().build()
+        val renderer = org.commonmark.renderer.html.HtmlRenderer.builder().build()
+        val document = parser.parse(note.content)
+        val htmlBody = renderer.render(document)
+
+        return """<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${note.filename}</title>
+    <style>
+        body {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #e0e0e0;
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.3rem;
+        }
+        a { color: #569cd6; }
+        code {
+            background-color: #2d2d2d;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        pre {
+            background-color: #2d2d2d;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        pre code { padding: 0; background: none; }
+        blockquote {
+            border-left: 4px solid #569cd6;
+            margin-left: 0;
+            padding-left: 1rem;
+            color: #9e9e9e;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 0.5rem;
+        }
+        th { background-color: #2d2d2d; }
+        img { max-width: 100%; }
+    </style>
+</head>
+<body>
+$htmlBody
+</body>
+</html>"""
     }
 
     fun parseFrontmatterTags(content: String): List<String> {

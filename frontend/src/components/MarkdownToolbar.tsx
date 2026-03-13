@@ -54,7 +54,6 @@ export default function MarkdownToolbar({ editorView }: MarkdownToolbarProps) {
       showToast('이미지 업로드에 실패했습니다.', 'error')
     }
 
-    // input 초기화
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -72,13 +71,14 @@ export default function MarkdownToolbar({ editorView }: MarkdownToolbarProps) {
   ]
 
   return (
-    <div className="markdown-toolbar">
+    <div className="markdown-toolbar" role="toolbar" aria-label="마크다운 서식 도구">
       {buttons.map((btn) => (
         <button
           key={btn.title}
           type="button"
           className="toolbar-btn"
           title={btn.title}
+          aria-label={btn.title}
           onClick={btn.action}
         >
           {btn.label}
@@ -90,6 +90,7 @@ export default function MarkdownToolbar({ editorView }: MarkdownToolbarProps) {
         accept="image/*"
         onChange={handleImageUpload}
         style={{ display: 'none' }}
+        aria-label="이미지 파일 선택"
       />
     </div>
   )

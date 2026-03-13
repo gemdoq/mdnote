@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { getProfile, updateGitHubSettings, type UserProfile } from '../api/user'
 import { useToast } from '../contexts/ToastContext'
+import { SettingsSkeleton } from '../components/Skeleton'
 
 export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -29,7 +30,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) return <div className="loading">로딩 중...</div>
+  if (loading) return <SettingsSkeleton />
 
   return (
     <div className="settings-page">
@@ -71,27 +72,31 @@ export default function SettingsPage() {
           </div>
         </details>
         <form onSubmit={handleSubmit}>
-          <label>
+          <label htmlFor="github-token">
             GitHub Token
-            <input
-              type="password"
-              placeholder={profile?.hasGithubToken ? '(설정됨 - 변경하려면 입력)' : 'github_pat_...'}
-              value={githubToken}
-              onChange={(e) => setGithubToken(e.target.value)}
-              required={!profile?.hasGithubToken}
-            />
           </label>
-          <label>
+          <input
+            id="github-token"
+            type="password"
+            placeholder={profile?.hasGithubToken ? '(설정됨 - 변경하려면 입력)' : 'github_pat_...'}
+            value={githubToken}
+            onChange={(e) => setGithubToken(e.target.value)}
+            required={!profile?.hasGithubToken}
+            aria-label="GitHub 토큰"
+          />
+          <label htmlFor="github-repo">
             저장소 (owner/repo 형식)
-            <input
-              type="text"
-              placeholder="username/my-notes"
-              value={githubRepo}
-              onChange={(e) => setGithubRepo(e.target.value)}
-              required
-            />
           </label>
-          <button type="submit" className="btn-primary">저장</button>
+          <input
+            id="github-repo"
+            type="text"
+            placeholder="username/my-notes"
+            value={githubRepo}
+            onChange={(e) => setGithubRepo(e.target.value)}
+            required
+            aria-label="GitHub 저장소"
+          />
+          <button type="submit" className="btn-primary" aria-label="설정 저장">저장</button>
         </form>
       </section>
     </div>

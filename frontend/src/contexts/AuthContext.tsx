@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import { login as apiLogin, register as apiRegister, type LoginRequest, type RegisterRequest } from '../api/auth'
-import { getToken, clearToken } from '../api/client'
+import { getAccessToken, clearTokens, setTokens } from '../api/client'
 
 interface AuthContextType {
   isAuthenticated: boolean
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = getToken()
+    const token = getAccessToken()
     const savedUsername = localStorage.getItem('username') || sessionStorage.getItem('username')
     if (token && savedUsername) {
       setUsername(savedUsername)
@@ -29,12 +29,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (data: LoginRequest): Promise<string | null> => {
     try {
       const res = await apiLogin(data)
-      if (res.data.token) {
+      if (res.data.accessToken) {
         const storage = data.rememberMe ? localStorage : sessionStorage
-        storage.setItem('token', res.data.token)
+        setTokens(res.data.accessToken, res.data.refreshToken!, storage)
         storage.setItem('username', res.data.username!)
         if (!data.rememberMe) {
-          localStorage.removeItem('token')
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
           localStorage.removeItem('username')
         }
         setUsername(res.data.username!)
@@ -49,8 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterRequest): Promise<string | null> => {
     try {
       const res = await apiRegister(data)
-      if (res.data.token) {
-        localStorage.setItem('token', res.data.token)
+      if (res.data.accessToken) {
+        setTokens(res.data.accessToken, res.data.refreshToken!, localStorage)
         localStorage.setItem('username', res.data.username!)
         setUsername(res.data.username!)
         return null
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    clearToken()
+    clearTokens()
     setUsername(null)
   }
 

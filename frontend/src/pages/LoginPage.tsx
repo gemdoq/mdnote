@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="auth-card">
         <h1>mdnote</h1>
         <p className="auth-subtitle">마크다운 노트</p>
-        {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message" role="alert">{error}</div>}
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -52,6 +52,7 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            aria-label="사용자명"
           />
           <input
             type="password"
@@ -59,6 +60,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            aria-label="비밀번호"
           />
           <div className="login-options">
             <label className="checkbox-label">
@@ -78,7 +80,7 @@ export default function LoginPage() {
               자동 로그인
             </label>
           </div>
-          <button type="submit" className="btn-primary">로그인</button>
+          <button type="submit" className="btn-primary" aria-label="로그인">로그인</button>
         </form>
         <p className="auth-link">
           계정이 없으신가요? <Link to="/register">회원가입</Link>

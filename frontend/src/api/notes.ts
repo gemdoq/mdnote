@@ -8,6 +8,14 @@ export interface NoteListItem {
   tags?: string[]
 }
 
+export interface PaginatedNotes {
+  content: NoteListItem[]
+  totalElements: number
+  totalPages: number
+  page: number
+  size: number
+}
+
 export interface Note {
   filename: string
   content: string
@@ -30,12 +38,21 @@ export interface SharedNote {
   content: string
 }
 
-export const listNotes = (sort?: string, order?: string) => {
+export interface HistoryEntry {
+  sha: string
+  message: string
+  date: string
+  author: string
+}
+
+export const listNotes = (sort?: string, order?: string, page: number = 0, size: number = 20) => {
   const params = new URLSearchParams()
   if (sort) params.set('sort', sort)
   if (order) params.set('order', order)
+  params.set('page', String(page))
+  params.set('size', String(size))
   const qs = params.toString()
-  return client.get<NoteListItem[]>(`/notes${qs ? `?${qs}` : ''}`)
+  return client.get<PaginatedNotes>(`/notes${qs ? `?${qs}` : ''}`)
 }
 
 export const getNote = (filename: string) =>
@@ -72,3 +89,12 @@ export const unshareNote = (filename: string) =>
 
 export const getSharedNote = (token: string) =>
   axios.get<SharedNote>(`/api/shared/${encodeURIComponent(token)}`)
+
+export const getNoteHistory = (filename: string) =>
+  client.get<HistoryEntry[]>(`/notes/${encodeURIComponent(filename)}/history`)
+
+export const exportNote = (filename: string, format: string = 'html') =>
+  client.get(`/notes/${encodeURIComponent(filename)}/export`, {
+    params: { format },
+    responseType: 'blob'
+  })

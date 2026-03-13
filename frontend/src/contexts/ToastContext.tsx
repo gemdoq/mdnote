@@ -32,7 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="toast-container">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`toast toast-${toast.type}`}>
+          <div key={toast.id} className={`toast toast-${toast.type}`} role="alert">
             {toast.message}
           </div>
         ))}

@@ -10,21 +10,19 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtProvider(
-    @Value("\${jwt.secret}") private val secret: String,
-    @Value("\${jwt.expiration}") private val expiration: Long
+    @Value("\${jwt.secret}") private val secret: String
 ) {
     private val key: SecretKey by lazy {
         Keys.hmacShaKeyFor(secret.toByteArray())
     }
 
     companion object {
-        private const val REMEMBER_ME_EXPIRATION = 30L * 24 * 60 * 60 * 1000 // 30일
+        private const val ACCESS_TOKEN_EXPIRATION = 15L * 60 * 1000 // 15분
     }
 
-    fun generateToken(userId: Long, username: String, rememberMe: Boolean = false): String {
+    fun generateAccessToken(userId: Long, username: String): String {
         val now = Date()
-        val exp = if (rememberMe) REMEMBER_ME_EXPIRATION else expiration
-        val expiryDate = Date(now.time + exp)
+        val expiryDate = Date(now.time + ACCESS_TOKEN_EXPIRATION)
 
         return Jwts.builder()
             .subject(userId.toString())

@@ -13,7 +13,8 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  token?: string
+  accessToken?: string
+  refreshToken?: string
   username?: string
   error?: string
 }
@@ -23,3 +24,6 @@ export const login = (data: LoginRequest) =>
 
 export const register = (data: RegisterRequest) =>
   client.post<AuthResponse>('/auth/register', data)
+
+export const refreshToken = (token: string) =>
+  client.post<AuthResponse>('/auth/refresh', { refreshToken: token })

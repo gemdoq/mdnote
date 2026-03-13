@@ -45,5 +45,17 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          editor: ['@uiw/react-codemirror', '@codemirror/lang-markdown'],
+          markdown: ['react-markdown', 'remark-gfm', 'rehype-highlight']
+        }
+      }
+    }
   }
 })
