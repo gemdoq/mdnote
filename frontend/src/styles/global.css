@@ -225,9 +225,20 @@ button {
   margin: 0;
 }
 
-.search-bar button {
+.search-bar button,
+.btn-search-style {
   background-color: var(--bg-card);
   color: var(--text-primary);
+  text-align: center;
+  white-space: nowrap;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.btn-search-style {
+  display: inline-block;
+  border-radius: 8px;
 }
 
 .note-list {
@@ -664,25 +675,49 @@ button {
 .tab-btn {
   flex: 1;
   padding: 12px 24px;
-  background-color: var(--bg-secondary);
+  background-color: transparent;
   color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   font-size: 14px;
   font-weight: 600;
   min-height: 44px;
+  transition: all 0.2s;
 }
 
 .tab-btn.tab-active {
   background-color: var(--bg-card);
   color: var(--text-primary);
-  border-color: var(--accent);
   border-bottom: 2px solid var(--accent);
 }
 
 .preview-body {
   min-height: calc(100vh - 220px);
+}
+
+/* Editor Bottom Actions */
+.editor-bottom-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  margin-top: 8px;
+}
+
+.editor-bottom-actions .btn-primary {
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.editor-bottom-actions .btn-cancel {
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 /* Sort Select */

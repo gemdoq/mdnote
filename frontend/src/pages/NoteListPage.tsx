@@ -151,18 +151,15 @@ export default function NoteListPage() {
               : `${notes.length}개의 노트`}
           </span>
         </h2>
-        <div className="page-header-actions">
-          <select
-            className="sort-select"
-            value={sortIndex}
-            onChange={(e) => setSortIndex(Number(e.target.value))}
-          >
-            {SORT_OPTIONS.map((opt, i) => (
-              <option key={i} value={i}>{opt.label}</option>
-            ))}
-          </select>
-          <Link to="/new" className="btn-primary">새 노트</Link>
-        </div>
+        <select
+          className="sort-select"
+          value={sortIndex}
+          onChange={(e) => setSortIndex(Number(e.target.value))}
+        >
+          {SORT_OPTIONS.map((opt, i) => (
+            <option key={i} value={i}>{opt.label}</option>
+          ))}
+        </select>
       </div>
 
       <form onSubmit={handleSearch} className="search-bar">
@@ -173,6 +170,7 @@ export default function NoteListPage() {
           onChange={(e) => setQuery(e.target.value)}
         />
         <button type="submit">검색</button>
+        <Link to="/new" className="btn-search-style">새 노트</Link>
       </form>
 
       {error && <div className="error-message">{error}</div>}

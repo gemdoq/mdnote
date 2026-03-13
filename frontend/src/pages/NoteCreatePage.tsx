@@ -97,22 +97,14 @@ export default function NoteCreatePage() {
   return (
     <div className="note-create-page">
       <form onSubmit={handleSubmit}>
-        <div className="create-header">
-          <input
-            type="text"
-            placeholder="제목 (영어 소문자, 띄어쓰기 가능)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="title-input"
-            required
-          />
-          <div>
-            <button type="button" onClick={() => navigate(-1)} className="btn-cancel">취소</button>
-            <button type="submit" disabled={saving} className="btn-primary">
-              {saving ? '생성 중...' : '생성'}
-            </button>
-          </div>
-        </div>
+        <input
+          type="text"
+          placeholder="제목 (영어 소문자, 띄어쓰기 가능)"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="title-input"
+          required
+        />
         {title && (
           <p className="filename-preview">
             파일명: {generateFilename(title)}
@@ -125,14 +117,14 @@ export default function NoteCreatePage() {
             className={`tab-btn ${activeTab === 'edit' ? 'tab-active' : ''}`}
             onClick={() => setActiveTab('edit')}
           >
-            편집
+            ✏️ 편집
           </button>
           <button
             type="button"
             className={`tab-btn ${activeTab === 'preview' ? 'tab-active' : ''}`}
             onClick={() => setActiveTab('preview')}
           >
-            미리보기
+            👁 미리보기
           </button>
         </div>
 
@@ -143,7 +135,7 @@ export default function NoteCreatePage() {
               value={content}
               extensions={[markdown()]}
               onChange={setContent}
-              height="calc(100vh - 280px)"
+              height="calc(100vh - 320px)"
               theme="dark"
               onCreateEditor={handleEditorCreate}
             />
@@ -155,6 +147,13 @@ export default function NoteCreatePage() {
             </ReactMarkdown>
           </article>
         )}
+
+        <div className="editor-bottom-actions">
+          <button type="submit" disabled={saving} className="btn-primary">
+            {saving ? '생성 중...' : '생성'}
+          </button>
+          <button type="button" onClick={() => navigate(-1)} className="btn-cancel">취소</button>
+        </div>
       </form>
 
       <ConfirmModal

@@ -94,12 +94,6 @@ export default function NoteEditPage() {
     <div className="note-edit-page">
       <div className="edit-header">
         <h2>{filename}</h2>
-        <div>
-          <button onClick={() => navigate(-1)} className="btn-cancel">취소</button>
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? '저장 중...' : '저장'}
-          </button>
-        </div>
       </div>
 
       <div className="editor-tabs">
@@ -107,13 +101,13 @@ export default function NoteEditPage() {
           className={`tab-btn ${activeTab === 'edit' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('edit')}
         >
-          편집
+          ✏️ 편집
         </button>
         <button
           className={`tab-btn ${activeTab === 'preview' ? 'tab-active' : ''}`}
           onClick={() => setActiveTab('preview')}
         >
-          미리보기
+          👁 미리보기
         </button>
       </div>
 
@@ -124,7 +118,7 @@ export default function NoteEditPage() {
             value={content}
             extensions={[markdown()]}
             onChange={setContent}
-            height="calc(100vh - 220px)"
+            height="calc(100vh - 280px)"
             theme="dark"
             onCreateEditor={handleEditorCreate}
           />
@@ -136,6 +130,13 @@ export default function NoteEditPage() {
           </ReactMarkdown>
         </article>
       )}
+
+      <div className="editor-bottom-actions">
+        <button onClick={handleSave} disabled={saving} className="btn-primary">
+          {saving ? '저장 중...' : '저장'}
+        </button>
+        <button onClick={() => navigate(-1)} className="btn-cancel">취소</button>
+      </div>
 
       <ConfirmModal
         isOpen={showDraftModal}
