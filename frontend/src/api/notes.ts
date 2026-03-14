@@ -98,3 +98,8 @@ export const exportNote = (filename: string, format: string = 'html') =>
     params: { format },
     responseType: 'blob'
   })
+
+export const exportAllNotes = () =>
+  client.get('/notes/export-all', {
+    responseType: 'blob'
+  })

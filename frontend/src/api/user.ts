@@ -17,3 +17,6 @@ export const getProfile = () =>
 
 export const updateGitHubSettings = (data: GitHubSettingsRequest) =>
   client.put('/user/github-settings', data)
+
+export const testGithubConnection = () =>
+  client.get('/user/github/test')

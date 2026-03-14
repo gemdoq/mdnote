@@ -1059,7 +1059,9 @@ button {
 
 /* Character Counter */
 .char-counter {
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 8px 12px;
   font-size: 13px;
   color: var(--text-secondary);
@@ -1159,6 +1161,89 @@ button {
 
 .scroll-sentinel {
   height: 1px;
+}
+
+/* Save Status */
+.save-status {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.save-status-draft {
+  color: var(--text-secondary);
+}
+
+.save-status-unsaved {
+  color: #f0a500;
+}
+
+[data-theme="light"] .save-status-unsaved {
+  color: #e09400;
+}
+
+.save-status-saved {
+  color: var(--success);
+}
+
+/* Markdown Help */
+.markdown-help {
+  margin: 8px 0;
+}
+
+.markdown-help-toggle {
+  background: none;
+  color: var(--accent);
+  font-size: 14px;
+  padding: 8px 0;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.markdown-help-toggle:hover {
+  color: var(--accent-hover);
+  background: none;
+}
+
+.markdown-help-content {
+  margin-top: 8px;
+  padding: 16px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.markdown-help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.markdown-help-table th,
+.markdown-help-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-help-table th {
+  background-color: var(--bg-card);
+  font-weight: 600;
+}
+
+.markdown-help-table code {
+  background-color: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+/* Settings Form Actions */
+.settings-form-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 /* Mobile responsive */

@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { getProfile, updateGitHubSettings, type UserProfile } from '../api/user'
+import { getProfile, updateGitHubSettings, testGithubConnection, type UserProfile } from '../api/user'
+import { exportAllNotes } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import { SettingsSkeleton } from '../components/Skeleton'
 
@@ -8,6 +9,8 @@ export default function SettingsPage() {
   const [githubToken, setGithubToken] = useState('')
   const [githubRepo, setGithubRepo] = useState('')
   const [loading, setLoading] = useState(true)
+  const [testing, setTesting] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -27,6 +30,39 @@ export default function SettingsPage() {
       setGithubToken('')
     } catch {
       showToast('설정 저장에 실패했습니다.', 'error')
+    }
+  }
+
+  const handleTestConnection = async () => {
+    setTesting(true)
+    try {
+      await testGithubConnection()
+      showToast('GitHub 연결 성공!', 'success')
+    } catch {
+      showToast('GitHub 연결에 실패했습니다. 토큰과 저장소 설정을 확인해주세요.', 'error')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  const handleExportAll = async () => {
+    setExporting(true)
+    try {
+      const res = await exportAllNotes()
+      const blob = new Blob([res.data], { type: 'application/zip' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `mdnote-backup-${new Date().toISOString().slice(0, 10)}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      showToast('백업 파일이 다운로드되었습니다.', 'success')
+    } catch {
+      showToast('백업 다운로드에 실패했습니다.', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -96,8 +132,32 @@ export default function SettingsPage() {
             required
             aria-label="GitHub 저장소"
           />
-          <button type="submit" className="btn-primary" aria-label="설정 저장">저장</button>
+          <div className="settings-form-actions">
+            <button type="submit" className="btn-primary" aria-label="설정 저장">저장</button>
+            <button
+              type="button"
+              className="btn-edit"
+              onClick={handleTestConnection}
+              disabled={testing}
+              aria-label="GitHub 연결 테스트"
+            >
+              {testing ? '테스트 중...' : '연결 테스트'}
+            </button>
+          </div>
         </form>
+      </section>
+
+      <section className="settings-section">
+        <h3>데이터 백업</h3>
+        <p>전체 노트를 ZIP 파일로 다운로드합니다.</p>
+        <button
+          className="btn-primary"
+          onClick={handleExportAll}
+          disabled={exporting}
+          aria-label="전체 백업 다운로드"
+        >
+          {exporting ? '다운로드 중...' : '전체 백업'}
+        </button>
       </section>
     </div>
   )

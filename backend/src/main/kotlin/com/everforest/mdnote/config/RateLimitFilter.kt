@@ -18,7 +18,8 @@ class RateLimitFilter(
     private val requestCounts = ConcurrentHashMap<String, MutableList<Long>>()
 
     companion object {
-        private const val MAX_REQUESTS = 10
+        private const val AUTH_MAX_REQUESTS = 10
+        private const val NOTES_MAX_REQUESTS = 60
         private const val TIME_WINDOW_MS = 60_000L
     }
 
@@ -28,19 +29,25 @@ class RateLimitFilter(
         filterChain: FilterChain
     ) {
         val path = request.requestURI
-        if (!path.startsWith("/api/auth/")) {
+        if (!path.startsWith("/api/")) {
             filterChain.doFilter(request, response)
             return
         }
 
+        val maxRequests = when {
+            path.startsWith("/api/auth/") -> AUTH_MAX_REQUESTS
+            else -> NOTES_MAX_REQUESTS
+        }
+
         val clientIp = getClientIp(request)
+        val bucketKey = "$clientIp:${if (path.startsWith("/api/auth/")) "auth" else "api"}"
         val now = System.currentTimeMillis()
 
-        val timestamps = requestCounts.computeIfAbsent(clientIp) { mutableListOf() }
+        val timestamps = requestCounts.computeIfAbsent(bucketKey) { mutableListOf() }
         synchronized(timestamps) {
             timestamps.removeAll { now - it > TIME_WINDOW_MS }
 
-            if (timestamps.size >= MAX_REQUESTS) {
+            if (timestamps.size >= maxRequests) {
                 response.status = HttpStatus.TOO_MANY_REQUESTS.value()
                 response.contentType = MediaType.APPLICATION_JSON_VALUE
                 response.characterEncoding = "UTF-8"

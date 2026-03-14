@@ -10,6 +10,8 @@ import { createNote, uploadImage } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import ConfirmModal from '../components/ConfirmModal'
 import MarkdownToolbar from '../components/MarkdownToolbar'
+import MarkdownHelp from '../components/MarkdownHelp'
+import SaveStatus, { type SaveState } from '../components/SaveStatus'
 import { useTheme } from '../contexts/ThemeContext'
 
 const DRAFT_KEY = 'draft-new'
@@ -22,6 +24,7 @@ export default function NoteCreatePage() {
   const [showDraftModal, setShowDraftModal] = useState(false)
   const [draftData, setDraftData] = useState<{ title: string; content: string } | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('unsaved')
   const editorViewRef = useRef<EditorView | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -51,9 +54,12 @@ export default function NoteCreatePage() {
   useEffect(() => {
     const timer = setInterval(() => {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ title: titleRef.current, content: contentRef.current }))
+      if (saveState === 'unsaved') {
+        setSaveState('draft')
+      }
     }, 5000)
     return () => clearInterval(timer)
-  }, [])
+  }, [saveState])
 
   // 클립보드 이미지 붙여넣기
   useEffect(() => {
@@ -133,6 +139,7 @@ export default function NoteCreatePage() {
       const filename = generateFilename(title)
       await createNote({ filename, content })
       localStorage.removeItem(DRAFT_KEY)
+      setSaveState('saved')
       showToast('노트가 생성되었습니다.', 'success')
       navigate(`/notes/${encodeURIComponent(filename)}`)
     } catch {
@@ -141,6 +148,11 @@ export default function NoteCreatePage() {
       setSaving(false)
     }
   }
+
+  const handleContentChange = useCallback((value: string) => {
+    setContent(value)
+    setSaveState('unsaved')
+  }, [])
 
   const handleEditorCreate = useCallback((view: EditorView) => {
     editorViewRef.current = view
@@ -173,7 +185,7 @@ export default function NoteCreatePage() {
               type="text"
               placeholder="제목 (영어 소문자, 띄어쓰기 가능)"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { setTitle(e.target.value); setSaveState('unsaved') }}
               className="title-input"
               required
               aria-label="노트 제목"
@@ -213,13 +225,14 @@ export default function NoteCreatePage() {
             <CodeMirror
               value={content}
               extensions={[markdown()]}
-              onChange={setContent}
+              onChange={handleContentChange}
               height={isFullscreen ? 'calc(100vh - 180px)' : 'calc(100vh - 320px)'}
               theme={theme === 'dark' ? 'dark' : 'light'}
               onCreateEditor={handleEditorCreate}
             />
             <div className="char-counter" aria-label="글자 수 카운터">
-              {charCount}자 · {wordCount}단어
+              <SaveStatus state={saveState} />
+              <span>{charCount}자 · {wordCount}단어</span>
             </div>
           </div>
         ) : (
@@ -229,6 +242,8 @@ export default function NoteCreatePage() {
             </ReactMarkdown>
           </article>
         )}
+
+        <MarkdownHelp />
 
         <div className="editor-bottom-actions">
           <button type="submit" disabled={saving} className="btn-primary" aria-label="노트 생성">

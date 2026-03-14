@@ -1,5 +1,6 @@
 package com.everforest.mdnote.user
 
+import org.slf4j.LoggerFactory
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -10,6 +11,10 @@ import org.springframework.stereotype.Service
 class CustomUserDetailsService(
     private val userRepository: UserRepository
 ) : UserDetailsService {
+
+    companion object {
+        private val log = LoggerFactory.getLogger(CustomUserDetailsService::class.java)
+    }
 
     override fun loadUserByUsername(username: String): UserDetails {
         val user = userRepository.findByUsername(username)

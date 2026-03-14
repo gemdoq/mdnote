@@ -14,6 +14,7 @@ import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.transaction.annotation.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.util.UUID
@@ -29,6 +30,7 @@ class AuthController(
 ) {
 
     companion object {
+        private val log = LoggerFactory.getLogger(AuthController::class.java)
         private const val REMEMBER_ME_REFRESH_DAYS = 30L
         private const val DEFAULT_REFRESH_HOURS = 24L
     }
@@ -54,6 +56,7 @@ class AuthController(
             )
         )
 
+        log.info("회원가입 성공: username={}", user.username)
         val accessToken = jwtProvider.generateAccessToken(user.id, user.username)
         val refreshToken = createRefreshToken(user.id, false)
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -70,8 +73,10 @@ class AuthController(
             val user = userRepository.findByUsername(request.username).get()
             val accessToken = jwtProvider.generateAccessToken(user.id, user.username)
             val refreshToken = createRefreshToken(user.id, request.rememberMe)
+            log.info("로그인 성공: username={}", request.username)
             ResponseEntity.ok(AuthResponse(accessToken = accessToken, refreshToken = refreshToken, username = user.username))
         } catch (e: Exception) {
+            log.info("로그인 실패: username={}", request.username)
             ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(AuthResponse(error = "사용자명 또는 비밀번호가 올바르지 않습니다."))
         }

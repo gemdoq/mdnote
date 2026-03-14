@@ -10,6 +10,8 @@ import { getNote, updateNote, uploadImage } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import ConfirmModal from '../components/ConfirmModal'
 import MarkdownToolbar from '../components/MarkdownToolbar'
+import MarkdownHelp from '../components/MarkdownHelp'
+import SaveStatus, { type SaveState } from '../components/SaveStatus'
 import { NoteViewSkeleton } from '../components/Skeleton'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -23,8 +25,10 @@ export default function NoteEditPage() {
   const [showDraftModal, setShowDraftModal] = useState(false)
   const [draftContent, setDraftContent] = useState<string | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('saved')
   const editorViewRef = useRef<EditorView | null>(null)
   const editorContainerRef = useRef<HTMLDivElement>(null)
+  const initialContentRef = useRef('')
   const navigate = useNavigate()
   const { showToast } = useToast()
   const { theme } = useTheme()
@@ -37,6 +41,7 @@ export default function NoteEditPage() {
       .then((res) => {
         setContent(res.data.content)
         setSha(res.data.sha)
+        initialContentRef.current = res.data.content
 
         const draft = localStorage.getItem(draftKey)
         if (draft && draft !== res.data.content) {
@@ -56,9 +61,12 @@ export default function NoteEditPage() {
     if (!draftKey) return
     const timer = setInterval(() => {
       localStorage.setItem(draftKey, contentRef.current)
+      if (saveState === 'unsaved') {
+        setSaveState('draft')
+      }
     }, 5000)
     return () => clearInterval(timer)
-  }, [draftKey])
+  }, [draftKey, saveState])
 
   // 클립보드 이미지 붙여넣기
   useEffect(() => {
@@ -126,7 +134,9 @@ export default function NoteEditPage() {
     try {
       const res = await updateNote(filename, { content, sha })
       setSha(res.data.sha)
+      initialContentRef.current = content
       localStorage.removeItem(draftKey)
+      setSaveState('saved')
       showToast('노트가 저장되었습니다.', 'success')
       navigate(`/notes/${encodeURIComponent(filename)}`)
     } catch {
@@ -135,6 +145,11 @@ export default function NoteEditPage() {
       setSaving(false)
     }
   }
+
+  const handleContentChange = useCallback((value: string) => {
+    setContent(value)
+    setSaveState('unsaved')
+  }, [])
 
   const handleEditorCreate = useCallback((view: EditorView) => {
     editorViewRef.current = view
@@ -192,13 +207,14 @@ export default function NoteEditPage() {
           <CodeMirror
             value={content}
             extensions={[markdown()]}
-            onChange={setContent}
+            onChange={handleContentChange}
             height={isFullscreen ? 'calc(100vh - 180px)' : 'calc(100vh - 280px)'}
             theme={theme === 'dark' ? 'dark' : 'light'}
             onCreateEditor={handleEditorCreate}
           />
           <div className="char-counter" aria-label="글자 수 카운터">
-            {charCount}자 · {wordCount}단어
+            <SaveStatus state={saveState} />
+            <span>{charCount}자 · {wordCount}단어</span>
           </div>
         </div>
       ) : (
@@ -208,6 +224,8 @@ export default function NoteEditPage() {
           </ReactMarkdown>
         </article>
       )}
+
+      <MarkdownHelp />
 
       <div className="editor-bottom-actions">
         <button onClick={handleSave} disabled={saving} className="btn-primary" aria-label="노트 저장">

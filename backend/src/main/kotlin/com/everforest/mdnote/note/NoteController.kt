@@ -77,10 +77,12 @@ class NoteController(
     @GetMapping("/search")
     fun searchNotes(
         @AuthenticationPrincipal user: UserDetails,
-        @RequestParam q: String
-    ): ResponseEntity<List<NoteListResponse>> {
+        @RequestParam q: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): ResponseEntity<NotePageResponse> {
         val userId = user.username.toLong()
-        return ResponseEntity.ok(noteService.searchNotes(userId, q))
+        return ResponseEntity.ok(noteService.searchNotesPaged(userId, q, page, size))
     }
 
     @PutMapping("/{filename}/pin")
@@ -132,6 +134,18 @@ class NoteController(
         validateFilename(filename)
         val userId = user.username.toLong()
         return ResponseEntity.ok(noteService.getNoteHistory(userId, filename))
+    }
+
+    @GetMapping("/export-all")
+    fun exportAllNotes(
+        @AuthenticationPrincipal user: UserDetails
+    ): ResponseEntity<ByteArray> {
+        val userId = user.username.toLong()
+        val zipBytes = noteService.exportAllNotesAsZip(userId)
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .header("Content-Disposition", "attachment; filename=\"mdnote-backup.zip\"")
+            .body(zipBytes)
     }
 
     @GetMapping("/{filename}/export")
