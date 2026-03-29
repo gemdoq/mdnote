@@ -128,36 +128,42 @@ class AuthController(
         // 2. access_token으로 GitHub 사용자 정보 조회
         val githubUser = gitHubOAuthService.getGitHubUser(githubAccessToken)
 
-        if (githubUser.email == null) {
-            log.warn("GitHub OAuth: 이메일을 가져올 수 없음 - login={}", githubUser.login)
-            return ResponseEntity.badRequest()
-                .body(AuthResponse(error = "GitHub 계정에 공개 이메일이 설정되어 있지 않습니다."))
-        }
+        // 이메일이 없으면 GitHub noreply 이메일 사용
+        val email = githubUser.email ?: "${githubUser.id}+${githubUser.login}@users.noreply.github.com"
 
         // 3. 이메일로 기존 사용자 확인
-        val existingUser = userRepository.findByEmail(githubUser.email)
+        val existingUser = userRepository.findByEmail(email)
         val user = if (existingUser.isPresent) {
             // 기존 사용자 → GitHub 토큰 업데이트
             val found = existingUser.get()
             found.githubToken = githubAccessToken
-            log.info("GitHub OAuth: 기존 사용자 로그인 - username={}, email={}", found.username, githubUser.email)
+            log.info("GitHub OAuth: 기존 사용자 로그인 - username={}, email={}", found.username, email)
             userRepository.save(found)
         } else {
-            // 새 사용자 생성
-            val username = if (userRepository.existsByUsername(githubUser.login)) {
-                "github_${githubUser.login}"
+            // username으로도 기존 사용자 확인 (같은 GitHub 계정으로 재로그인)
+            val existingByUsername = userRepository.findByUsername(githubUser.login)
+            if (existingByUsername.isPresent) {
+                val found = existingByUsername.get()
+                found.githubToken = githubAccessToken
+                log.info("GitHub OAuth: 기존 사용자(username 매칭) 로그인 - username={}", found.username)
+                userRepository.save(found)
             } else {
-                githubUser.login
+                // 새 사용자 생성
+                val username = if (userRepository.existsByUsername(githubUser.login)) {
+                    "github_${githubUser.login}"
+                } else {
+                    githubUser.login
+                }
+                val newUser = User(
+                    username = username,
+                    password = null,
+                    email = email,
+                    githubToken = githubAccessToken,
+                    provider = AuthProvider.GITHUB
+                )
+                log.info("GitHub OAuth: 새 사용자 생성 - username={}, email={}", username, email)
+                userRepository.save(newUser)
             }
-            val newUser = User(
-                username = username,
-                password = null,
-                email = githubUser.email,
-                githubToken = githubAccessToken,
-                provider = AuthProvider.GITHUB
-            )
-            log.info("GitHub OAuth: 새 사용자 생성 - username={}, email={}", username, githubUser.email)
-            userRepository.save(newUser)
         }
 
         // 4. JWT 토큰 발급

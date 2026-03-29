@@ -27,7 +27,7 @@ class GitHubOAuthService(
     }
 
     fun getAuthorizationUrl(state: String): String {
-        return "$AUTHORIZE_URL?client_id=$clientId&redirect_uri=$redirectUri&scope=repo&state=$state"
+        return "$AUTHORIZE_URL?client_id=$clientId&redirect_uri=$redirectUri&scope=repo%20user:email&state=$state"
     }
 
     fun exchangeCodeForToken(code: String): String {
