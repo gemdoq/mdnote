@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { getProfile, updateGitHubSettings, testGithubConnection, type UserProfile } from '../api/user'
+import { getProfile, updateGitHubSettings, testGithubConnection, changePassword, type UserProfile } from '../api/user'
 import { exportAllNotes } from '../api/notes'
 import { useToast } from '../contexts/ToastContext'
 import { SettingsSkeleton } from '../components/Skeleton'
@@ -8,6 +8,10 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [githubToken, setGithubToken] = useState('')
   const [githubRepo, setGithubRepo] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -66,6 +70,30 @@ export default function SettingsPage() {
     }
   }
 
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      showToast('새 비밀번호가 일치하지 않습니다.', 'error')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const res = await changePassword({ currentPassword, newPassword })
+      if (res.data.success) {
+        showToast(res.data.message, 'success')
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        showToast(res.data.message, 'error')
+      }
+    } catch {
+      showToast('비밀번호 변경에 실패했습니다.', 'error')
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   if (loading) return <SettingsSkeleton />
 
   return (
@@ -77,6 +105,45 @@ export default function SettingsPage() {
         <p>사용자명: {profile?.username}</p>
         <p>이메일: {profile?.email}</p>
       </section>
+
+      {profile?.provider === 'LOCAL' && (
+        <section className="settings-section">
+          <h3>비밀번호 변경</h3>
+          <form onSubmit={handleChangePassword}>
+            <label htmlFor="current-password">현재 비밀번호</label>
+            <input
+              id="current-password"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              aria-label="현재 비밀번호"
+            />
+            <label htmlFor="new-password">새 비밀번호</label>
+            <input
+              id="new-password"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              placeholder="8자 이상, 영문+숫자"
+              aria-label="새 비밀번호"
+            />
+            <label htmlFor="confirm-password">새 비밀번호 확인</label>
+            <input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              aria-label="새 비밀번호 확인"
+            />
+            <button type="submit" className="btn-primary" disabled={changingPassword}>
+              {changingPassword ? '변경 중...' : '비밀번호 변경'}
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="settings-section">
         <h3>GitHub 연동</h3>

@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean
   login: (data: LoginRequest) => Promise<string | null>
   register: (data: RegisterRequest) => Promise<string | null>
+  loginWithTokens: (accessToken: string, refreshToken: string, username: string) => void
   logout: () => void
 }
 
@@ -62,13 +63,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const loginWithTokens = (accessToken: string, refreshToken: string, username: string) => {
+    setTokens(accessToken, refreshToken, localStorage)
+    localStorage.setItem('username', username)
+    setUsername(username)
+  }
+
   const logout = () => {
     clearTokens()
     setUsername(null)
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated: !!username, username, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated: !!username, username, loading, login, register, loginWithTokens, logout }}>
       {children}
     </AuthContext.Provider>
   )

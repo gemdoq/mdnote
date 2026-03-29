@@ -4,5 +4,6 @@ data class UserProfileResponse(
     val username: String,
     val email: String,
     val githubRepo: String?,
-    val hasGithubToken: Boolean
+    val hasGithubToken: Boolean,
+    val provider: String = "LOCAL"
 )

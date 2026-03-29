@@ -1,19 +1,22 @@
 package com.everforest.mdnote.user
 
 import com.everforest.mdnote.note.GitHubApiClient
+import com.everforest.mdnote.user.dto.ChangePasswordRequest
 import com.everforest.mdnote.user.dto.GitHubSettingsRequest
 import com.everforest.mdnote.user.dto.UserProfileResponse
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/user")
 class UserController(
     private val userRepository: UserRepository,
-    private val githubApiClient: GitHubApiClient
+    private val githubApiClient: GitHubApiClient,
+    private val passwordEncoder: PasswordEncoder
 ) {
 
     companion object {
@@ -29,7 +32,8 @@ class UserController(
                 username = u.username,
                 email = u.email,
                 githubRepo = u.githubRepo,
-                hasGithubToken = u.githubToken != null
+                hasGithubToken = u.githubToken != null,
+                provider = u.provider.name
             )
         )
     }
@@ -74,5 +78,28 @@ class UserController(
                 mapOf("success" to false, "message" to (e.message ?: "연결에 실패했습니다."))
             )
         }
+    }
+
+    @PutMapping("/password")
+    fun changePassword(
+        @AuthenticationPrincipal user: UserDetails,
+        @RequestBody request: ChangePasswordRequest
+    ): ResponseEntity<Map<String, Any>> {
+        val u = userRepository.findById(user.username.toLong()).get()
+
+        if (u.provider != AuthProvider.LOCAL) {
+            return ResponseEntity.badRequest()
+                .body(mapOf("success" to false, "message" to "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다."))
+        }
+
+        if (!passwordEncoder.matches(request.currentPassword, u.password)) {
+            return ResponseEntity.badRequest()
+                .body(mapOf("success" to false, "message" to "현재 비밀번호가 올바르지 않습니다."))
+        }
+
+        u.password = passwordEncoder.encode(request.newPassword)
+        userRepository.save(u)
+        log.info("비밀번호 변경 성공: userId={}", user.username)
+        return ResponseEntity.ok(mapOf("success" to true, "message" to "비밀번호가 변경되었습니다."))
     }
 }

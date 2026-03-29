@@ -1,5 +1,8 @@
 import { useState } from 'react'
 
+const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+const modKey = isMac ? 'Cmd' : 'Ctrl'
+
 const HELP_ITEMS = [
   { syntax: '# 제목', desc: '제목 (H1~H6, #의 개수로 조절)' },
   { syntax: '**굵게**', desc: '굵은 글씨' },
@@ -15,6 +18,13 @@ const HELP_ITEMS = [
   { syntax: '---', desc: '구분선' },
   { syntax: '| 헤더 | 헤더 |\n|------|------|\n| 셀 | 셀 |', desc: '표' },
   { syntax: '- [ ] 할 일', desc: '체크리스트' },
+]
+
+const SHORTCUT_ITEMS = [
+  { shortcut: `${modKey}+S`, desc: '저장' },
+  { shortcut: `${modKey}+B`, desc: '굵게' },
+  { shortcut: `${modKey}+I`, desc: '기울임' },
+  { shortcut: `${modKey}+Enter`, desc: '편집/미리보기 전환' },
 ]
 
 export default function MarkdownHelp() {
@@ -33,6 +43,24 @@ export default function MarkdownHelp() {
       </button>
       {open && (
         <div className="markdown-help-content">
+          <h4 className="markdown-help-section-title">키보드 단축키</h4>
+          <table className="markdown-help-table">
+            <thead>
+              <tr>
+                <th>단축키</th>
+                <th>동작</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SHORTCUT_ITEMS.map((item, i) => (
+                <tr key={i}>
+                  <td><kbd>{item.shortcut}</kbd></td>
+                  <td>{item.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <h4 className="markdown-help-section-title">마크다운 문법</h4>
           <table className="markdown-help-table">
             <thead>
               <tr>

@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string
   githubRepo: string | null
   hasGithubToken: boolean
+  provider: string
 }
 
 export interface GitHubSettingsRequest {
@@ -20,3 +21,6 @@ export const updateGitHubSettings = (data: GitHubSettingsRequest) =>
 
 export const testGithubConnection = () =>
   client.get('/user/github/test')
+
+export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
+  client.put<{ success: boolean; message: string }>('/user/password', data)

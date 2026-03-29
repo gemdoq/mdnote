@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
@@ -14,6 +14,7 @@ import MarkdownHelp from '../components/MarkdownHelp'
 import SaveStatus, { type SaveState } from '../components/SaveStatus'
 import { NoteViewSkeleton } from '../components/Skeleton'
 import { useTheme } from '../contexts/ThemeContext'
+import { useEditorShortcuts } from '../hooks/useEditorShortcuts'
 
 export default function NoteEditPage() {
   const { filename } = useParams<{ filename: string }>()
@@ -102,8 +103,46 @@ export default function NoteEditPage() {
       }
     }
 
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const files = e.dataTransfer?.files
+      if (!files || !editorViewRef.current) return
+
+      for (const file of Array.from(files)) {
+        if (file.type.startsWith('image/')) {
+          try {
+            showToast('이미지 업로드 중...', 'info')
+            const res = await uploadImage(file)
+            const view = editorViewRef.current
+            const { from, to } = view.state.selection.main
+            const insert = `![이미지](${res.data.url})`
+            view.dispatch({
+              changes: { from, to, insert },
+              selection: { anchor: from + insert.length }
+            })
+            showToast('이미지가 업로드되었습니다.', 'success')
+          } catch {
+            showToast('이미지 업로드에 실패했습니다.', 'error')
+          }
+          break
+        }
+      }
+    }
+
     container.addEventListener('paste', handlePaste)
-    return () => container.removeEventListener('paste', handlePaste)
+    container.addEventListener('dragover', handleDragOver)
+    container.addEventListener('drop', handleDrop)
+    return () => {
+      container.removeEventListener('paste', handlePaste)
+      container.removeEventListener('dragover', handleDragOver)
+      container.removeEventListener('drop', handleDrop)
+    }
   }, [showToast])
 
   // 풀스크린 토글
@@ -145,6 +184,12 @@ export default function NoteEditPage() {
       setSaving(false)
     }
   }
+
+  const shortcutHandlers = useMemo(() => ({
+    onSave: () => { if (!saving) handleSave() },
+    onTogglePreview: () => setActiveTab(prev => prev === 'edit' ? 'preview' : 'edit')
+  }), [saving])
+  useEditorShortcuts(editorViewRef, shortcutHandlers)
 
   const handleContentChange = useCallback((value: string) => {
     setContent(value)
@@ -189,7 +234,7 @@ export default function NoteEditPage() {
         </div>
       )}
 
-      <div className="toggle-switch-wrapper">
+      <div className="toggle-switch-wrapper mobile-only">
         <span className={`toggle-label ${activeTab === 'edit' ? 'toggle-label-active' : ''}`}>{'\u270F\uFE0F'} 편집</span>
         <button
           className={`toggle-switch ${activeTab === 'preview' ? 'toggle-on' : ''}`}
@@ -201,8 +246,8 @@ export default function NoteEditPage() {
         <span className={`toggle-label ${activeTab === 'preview' ? 'toggle-label-active' : ''}`}>{'\uD83D\uDC41'} 미리보기</span>
       </div>
 
-      {activeTab === 'edit' ? (
-        <div ref={editorContainerRef}>
+      <div className="editor-split-view">
+        <div className={`editor-pane ${activeTab === 'preview' ? 'mobile-hidden' : ''}`} ref={editorContainerRef}>
           <MarkdownToolbar editorView={editorViewRef.current} />
           <CodeMirror
             value={content}
@@ -217,13 +262,12 @@ export default function NoteEditPage() {
             <span>{charCount}자 · {wordCount}단어</span>
           </div>
         </div>
-      ) : (
-        <article className="markdown-body preview-body">
+        <article className={`markdown-body preview-body preview-pane ${activeTab === 'edit' ? 'mobile-hidden' : ''}`}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
             {content}
           </ReactMarkdown>
         </article>
-      )}
+      </div>
 
       <MarkdownHelp />
 

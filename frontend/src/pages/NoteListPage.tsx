@@ -124,6 +124,19 @@ export default function NoteListPage() {
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, sortIndex, query])
 
+  // 검색 디바운스
+  useEffect(() => {
+    if (!query) {
+      fetchNotes(0, false)
+      return
+    }
+    const timer = setTimeout(() => {
+      setPage(0)
+      fetchNotes(0, false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(0)
@@ -234,6 +247,15 @@ export default function NoteListPage() {
     swipeDirection.current = null
   }
 
+  const highlightText = (text: string, search: string) => {
+    if (!search.trim()) return text
+    const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const parts = text.split(regex)
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i} className="search-highlight">{part}</mark> : part
+    )
+  }
+
   const parseFilename = (filename: string) => {
     const match = filename.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/)
     if (match) {
@@ -295,8 +317,21 @@ export default function NoteListPage() {
 
       {notes.length === 0 && !error ? (
         <div className="empty-state">
-          <p>노트가 없습니다.</p>
-          <Link to="/new">첫 번째 노트를 만들어보세요</Link>
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="empty-state-icon">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
+          <p className="empty-state-title">
+            {query ? '검색 결과가 없습니다' : '아직 노트가 없습니다'}
+          </p>
+          <p className="empty-state-desc">
+            {query ? '다른 검색어로 시도해보세요' : '새 노트를 만들어 아이디어를 기록해보세요'}
+          </p>
+          {!query && (
+            <Link to="/new" className="btn-primary empty-state-btn">첫 노트 만들기</Link>
+          )}
         </div>
       ) : (
         <ul className="note-list">
@@ -333,7 +368,7 @@ export default function NoteListPage() {
                   </button>
                   <Link to={`/notes/${encodeURIComponent(note.filename)}`} className="note-item">
                     <div className="note-item-content">
-                      <span className="note-title">{title}</span>
+                      <span className="note-title">{highlightText(title, query)}</span>
                       {note.tags && note.tags.length > 0 && (
                         <div className="tag-list">
                           {note.tags.map((tag) => (

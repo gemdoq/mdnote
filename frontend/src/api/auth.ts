@@ -27,3 +27,9 @@ export const register = (data: RegisterRequest) =>
 
 export const refreshToken = (token: string) =>
   client.post<AuthResponse>('/auth/refresh', { refreshToken: token })
+
+export const getGitHubAuthUrl = () =>
+  client.get<{ url: string; state: string }>('/auth/github')
+
+export const githubCallback = (code: string, state: string) =>
+  client.post<AuthResponse>('/auth/github/callback', { code, state })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { markdown } from '@codemirror/lang-markdown'
@@ -13,8 +13,17 @@ import MarkdownToolbar from '../components/MarkdownToolbar'
 import MarkdownHelp from '../components/MarkdownHelp'
 import SaveStatus, { type SaveState } from '../components/SaveStatus'
 import { useTheme } from '../contexts/ThemeContext'
+import { useEditorShortcuts } from '../hooks/useEditorShortcuts'
 
 const DRAFT_KEY = 'draft-new'
+
+const TEMPLATES: { label: string; content: string }[] = [
+  { label: '빈 문서', content: '' },
+  { label: '회의록', content: `# 회의록\n\n## 일시\n${new Date().toISOString().slice(0, 10)}\n\n## 참석자\n- \n\n## 안건\n1. \n\n## 결정사항\n- \n\n## 다음 회의\n- 일시: \n- 안건: \n` },
+  { label: '일기', content: `# ${new Date().toISOString().slice(0, 10)} 일기\n\n## 오늘 한 일\n- \n\n## 느낀 점\n\n\n## 내일 할 일\n- \n` },
+  { label: 'TODO', content: `# TODO\n\n## 긴급\n- [ ] \n\n## 중요\n- [ ] \n\n## 일반\n- [ ] \n` },
+  { label: '기술 문서', content: `# 제목\n\n## 개요\n\n\n## 배경\n\n\n## 구현\n\n\`\`\`\n// 코드\n\`\`\`\n\n## 참고\n- \n` },
+]
 
 export default function NoteCreatePage() {
   const [title, setTitle] = useState('')
@@ -95,8 +104,46 @@ export default function NoteCreatePage() {
       }
     }
 
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const files = e.dataTransfer?.files
+      if (!files || !editorViewRef.current) return
+
+      for (const file of Array.from(files)) {
+        if (file.type.startsWith('image/')) {
+          try {
+            showToast('이미지 업로드 중...', 'info')
+            const res = await uploadImage(file)
+            const view = editorViewRef.current
+            const { from, to } = view.state.selection.main
+            const insert = `![이미지](${res.data.url})`
+            view.dispatch({
+              changes: { from, to, insert },
+              selection: { anchor: from + insert.length }
+            })
+            showToast('이미지가 업로드되었습니다.', 'success')
+          } catch {
+            showToast('이미지 업로드에 실패했습니다.', 'error')
+          }
+          break
+        }
+      }
+    }
+
     container.addEventListener('paste', handlePaste)
-    return () => container.removeEventListener('paste', handlePaste)
+    container.addEventListener('dragover', handleDragOver)
+    container.addEventListener('drop', handleDrop)
+    return () => {
+      container.removeEventListener('paste', handlePaste)
+      container.removeEventListener('dragover', handleDragOver)
+      container.removeEventListener('drop', handleDrop)
+    }
   }, [showToast])
 
   // 풀스크린 토글
@@ -149,6 +196,12 @@ export default function NoteCreatePage() {
     }
   }
 
+  const shortcutHandlers = useMemo(() => ({
+    onSave: () => { if (!saving) document.querySelector<HTMLFormElement>('form')?.requestSubmit() },
+    onTogglePreview: () => setActiveTab(prev => prev === 'edit' ? 'preview' : 'edit')
+  }), [saving])
+  useEditorShortcuts(editorViewRef, shortcutHandlers)
+
   const handleContentChange = useCallback((value: string) => {
     setContent(value)
     setSaveState('unsaved')
@@ -200,13 +253,33 @@ export default function NoteCreatePage() {
             </button>
           </div>
         )}
+        {!isFullscreen && (
+          <div className="template-selector">
+            <select
+              onChange={(e) => {
+                const tpl = TEMPLATES[Number(e.target.value)]
+                if (tpl && tpl.content) {
+                  setContent(tpl.content)
+                  setSaveState('unsaved')
+                }
+              }}
+              aria-label="템플릿 선택"
+              defaultValue=""
+            >
+              <option value="" disabled>템플릿 선택</option>
+              {TEMPLATES.map((t, i) => (
+                <option key={t.label} value={i}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {title && !isFullscreen && (
           <p className="filename-preview">
             파일명: {generateFilename(title)}
           </p>
         )}
 
-        <div className="toggle-switch-wrapper">
+        <div className="toggle-switch-wrapper mobile-only">
           <span className={`toggle-label ${activeTab === 'edit' ? 'toggle-label-active' : ''}`}>{'\u270F\uFE0F'} 편집</span>
           <button
             type="button"
@@ -219,8 +292,8 @@ export default function NoteCreatePage() {
           <span className={`toggle-label ${activeTab === 'preview' ? 'toggle-label-active' : ''}`}>{'\uD83D\uDC41'} 미리보기</span>
         </div>
 
-        {activeTab === 'edit' ? (
-          <div ref={editorContainerRef}>
+        <div className="editor-split-view">
+          <div className={`editor-pane ${activeTab === 'preview' ? 'mobile-hidden' : ''}`} ref={editorContainerRef}>
             <MarkdownToolbar editorView={editorViewRef.current} />
             <CodeMirror
               value={content}
@@ -235,13 +308,12 @@ export default function NoteCreatePage() {
               <span>{charCount}자 · {wordCount}단어</span>
             </div>
           </div>
-        ) : (
-          <article className="markdown-body preview-body">
+          <article className={`markdown-body preview-body preview-pane ${activeTab === 'edit' ? 'mobile-hidden' : ''}`}>
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
               {content}
             </ReactMarkdown>
           </article>
-        )}
+        </div>
 
         <MarkdownHelp />
 

@@ -1,6 +1,7 @@
 package com.everforest.mdnote.auth
 
 import com.everforest.mdnote.auth.dto.AuthResponse
+import com.everforest.mdnote.auth.dto.GitHubCallbackRequest
 import com.everforest.mdnote.auth.dto.LoginRequest
 import com.everforest.mdnote.auth.dto.RefreshRequest
 import com.everforest.mdnote.auth.dto.RegisterRequest
@@ -26,7 +27,8 @@ class AuthController(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtProvider: JwtProvider,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val gitHubOAuthService: GitHubOAuthService
 ) {
 
     companion object {
@@ -107,6 +109,61 @@ class AuthController(
         val accessToken = jwtProvider.generateAccessToken(user.id, user.username)
         val newRefreshToken = createRefreshToken(user.id, false)
         return ResponseEntity.ok(AuthResponse(accessToken = accessToken, refreshToken = newRefreshToken, username = user.username))
+    }
+
+    @GetMapping("/github")
+    fun getGitHubAuthUrl(): ResponseEntity<Map<String, String>> {
+        val state = UUID.randomUUID().toString()
+        val url = gitHubOAuthService.getAuthorizationUrl(state)
+        log.info("GitHub OAuth: 인증 URL 생성 - state={}", state)
+        return ResponseEntity.ok(mapOf("url" to url, "state" to state))
+    }
+
+    @PostMapping("/github/callback")
+    @Transactional
+    fun handleGitHubCallback(@RequestBody request: GitHubCallbackRequest): ResponseEntity<AuthResponse> {
+        // 1. code로 GitHub access_token 교환
+        val githubAccessToken = gitHubOAuthService.exchangeCodeForToken(request.code)
+
+        // 2. access_token으로 GitHub 사용자 정보 조회
+        val githubUser = gitHubOAuthService.getGitHubUser(githubAccessToken)
+
+        if (githubUser.email == null) {
+            log.warn("GitHub OAuth: 이메일을 가져올 수 없음 - login={}", githubUser.login)
+            return ResponseEntity.badRequest()
+                .body(AuthResponse(error = "GitHub 계정에 공개 이메일이 설정되어 있지 않습니다."))
+        }
+
+        // 3. 이메일로 기존 사용자 확인
+        val existingUser = userRepository.findByEmail(githubUser.email)
+        val user = if (existingUser.isPresent) {
+            // 기존 사용자 → GitHub 토큰 업데이트
+            val found = existingUser.get()
+            found.githubToken = githubAccessToken
+            log.info("GitHub OAuth: 기존 사용자 로그인 - username={}, email={}", found.username, githubUser.email)
+            userRepository.save(found)
+        } else {
+            // 새 사용자 생성
+            val username = if (userRepository.existsByUsername(githubUser.login)) {
+                "github_${githubUser.login}"
+            } else {
+                githubUser.login
+            }
+            val newUser = User(
+                username = username,
+                password = null,
+                email = githubUser.email,
+                githubToken = githubAccessToken,
+                provider = AuthProvider.GITHUB
+            )
+            log.info("GitHub OAuth: 새 사용자 생성 - username={}, email={}", username, githubUser.email)
+            userRepository.save(newUser)
+        }
+
+        // 4. JWT 토큰 발급
+        val accessToken = jwtProvider.generateAccessToken(user.id, user.username)
+        val refreshToken = createRefreshToken(user.id, false)
+        return ResponseEntity.ok(AuthResponse(accessToken = accessToken, refreshToken = refreshToken, username = user.username))
     }
 
     private fun createRefreshToken(userId: Long, rememberMe: Boolean): String {

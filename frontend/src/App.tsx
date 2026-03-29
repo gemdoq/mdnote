@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import { NoteListSkeleton, NoteViewSkeleton } from './components/Skeleton'
 
+const LandingPage = lazy(() => import('./pages/LandingPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const NoteListPage = lazy(() => import('./pages/NoteListPage'))
@@ -15,11 +16,12 @@ const NoteEditPage = lazy(() => import('./pages/NoteEditPage'))
 const NoteCreatePage = lazy(() => import('./pages/NoteCreatePage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const SharedNotePage = lazy(() => import('./pages/SharedNotePage'))
+const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage'))
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   if (loading) return <NoteListSkeleton />
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />
+  return isAuthenticated ? <>{children}</> : <Navigate to="/landing" />
 }
 
 export default function App() {
@@ -29,6 +31,11 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <Routes>
+              <Route path="/landing" element={
+                <Suspense fallback={<div className="loading">로딩 중...</div>}>
+                  <LandingPage />
+                </Suspense>
+              } />
               <Route path="/login" element={
                 <Suspense fallback={<div className="loading">로딩 중...</div>}>
                   <LoginPage />
@@ -37,6 +44,11 @@ export default function App() {
               <Route path="/register" element={
                 <Suspense fallback={<div className="loading">로딩 중...</div>}>
                   <RegisterPage />
+                </Suspense>
+              } />
+              <Route path="/oauth/callback" element={
+                <Suspense fallback={<div className="loading">로딩 중...</div>}>
+                  <OAuthCallbackPage />
                 </Suspense>
               } />
               <Route path="/shared/:token" element={
