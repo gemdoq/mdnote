@@ -28,6 +28,7 @@ pipeline {
         stage('Docker Build & Deploy') {
             steps {
                 sh 'docker compose down || true'
+                sh 'docker rm -f mdnote-backend mdnote-frontend || true'
                 sh 'docker compose up -d --build'
             }
         }
