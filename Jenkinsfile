@@ -4,6 +4,9 @@ pipeline {
     environment {
         DB_PASSWORD = credentials('mdnote-db-password')
         JWT_SECRET = credentials('mdnote-jwt-secret')
+        GITHUB_CLIENT_ID = credentials('mdnote-github-client-id')
+        GITHUB_CLIENT_SECRET = credentials('mdnote-github-client-secret')
+        GITHUB_REDIRECT_URI = 'http://everforest.iptime.org:8089/oauth/callback'
     }
 
     stages {
