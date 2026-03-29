@@ -10,6 +10,9 @@ services:
       - DATABASE_USERNAME=dbuser
       - DATABASE_PASSWORD=${DB_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://everforest.iptime.org:8089/oauth/callback}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
