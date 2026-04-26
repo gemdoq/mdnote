@@ -4,5 +4,11 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DATABASE_USERNAME:dbuser}
     password: ${DATABASE_PASSWORD:}
+    hikari:
+      initialization-fail-timeout: 60000
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      validation-timeout: 5000
   jpa:
     show-sql: false
