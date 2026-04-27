@@ -79,27 +79,27 @@ pipeline {
     post {
         success {
             sh '''
-                curl -sS -H "Content-Type: application/json" \
-                     -d '{
-                       "embeds": [{
-                         "title": "✅ mdnote 배포 성공",
-                         "description": "빌드 #'"${BUILD_NUMBER}"' 배포 완료\\nhttps://mdnote.matchhub.co.kr",
-                         "color": 3066993
-                       }]
-                     }' \
+                MSG="빌드 #${BUILD_NUMBER} 배포 완료
+https://mdnote.matchhub.co.kr"
+                PAYLOAD=$(jq -nc \
+                  --arg t "✅ mdnote 배포 성공" \
+                  --arg d "$MSG" \
+                  --argjson c 3066993 \
+                  '{embeds: [{title: $t, description: $d, color: $c}]}')
+                curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" \
                      "${DISCORD_WEBHOOK_BUILD_SUCCESS}" >/dev/null 2>&1 || true
             '''
         }
         failure {
             sh '''
-                curl -sS -H "Content-Type: application/json" \
-                     -d '{
-                       "embeds": [{
-                         "title": "❌ mdnote 배포 실패",
-                         "description": "빌드 #'"${BUILD_NUMBER}"' 실패\\n[로그 보기]('"${BUILD_URL}"'console)",
-                         "color": 15158332
-                       }]
-                     }' \
+                MSG="빌드 #${BUILD_NUMBER} 실패
+[로그 보기](${BUILD_URL}console)"
+                PAYLOAD=$(jq -nc \
+                  --arg t "❌ mdnote 배포 실패" \
+                  --arg d "$MSG" \
+                  --argjson c 15158332 \
+                  '{embeds: [{title: $t, description: $d, color: $c}]}')
+                curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" \
                      "${DISCORD_WEBHOOK_BUILD_FAILURE}" >/dev/null 2>&1 || true
             '''
         }
