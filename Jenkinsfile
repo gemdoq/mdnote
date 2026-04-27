@@ -12,7 +12,8 @@ pipeline {
         GITHUB_CLIENT_ID = credentials('mdnote-github-client-id')
         GITHUB_CLIENT_SECRET = credentials('mdnote-github-client-secret')
         GITHUB_REDIRECT_URI = 'https://mdnote.matchhub.co.kr/oauth/callback'
-        NTFY_TOPIC = 'matchhub-everforest-5851'
+        DISCORD_WEBHOOK_BUILD_SUCCESS = credentials('discord-webhook-build-success')
+        DISCORD_WEBHOOK_BUILD_FAILURE = credentials('discord-webhook-build-failure')
     }
 
     stages {
@@ -78,18 +79,28 @@ pipeline {
     post {
         success {
             sh '''
-                curl -sS -H "Title: ✅ mdnote 배포 성공" \
-                     -H "Priority: low" -H "Tags: rocket" \
-                     -d "빌드 #${BUILD_NUMBER} 배포 완료. https://mdnote.matchhub.co.kr" \
-                     "https://ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true
+                curl -sS -H "Content-Type: application/json" \
+                     -d '{
+                       "embeds": [{
+                         "title": "✅ mdnote 배포 성공",
+                         "description": "빌드 #'"${BUILD_NUMBER}"' 배포 완료\\nhttps://mdnote.matchhub.co.kr",
+                         "color": 3066993
+                       }]
+                     }' \
+                     "${DISCORD_WEBHOOK_BUILD_SUCCESS}" >/dev/null 2>&1 || true
             '''
         }
         failure {
             sh '''
-                curl -sS -H "Title: ❌ mdnote 배포 실패" \
-                     -H "Priority: high" -H "Tags: warning" \
-                     -d "빌드 #${BUILD_NUMBER} 실패. ${BUILD_URL}console" \
-                     "https://ntfy.sh/${NTFY_TOPIC}" >/dev/null 2>&1 || true
+                curl -sS -H "Content-Type: application/json" \
+                     -d '{
+                       "embeds": [{
+                         "title": "❌ mdnote 배포 실패",
+                         "description": "빌드 #'"${BUILD_NUMBER}"' 실패\\n[로그 보기]('"${BUILD_URL}"'console)",
+                         "color": 15158332
+                       }]
+                     }' \
+                     "${DISCORD_WEBHOOK_BUILD_FAILURE}" >/dev/null 2>&1 || true
             '''
         }
     }
