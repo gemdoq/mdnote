@@ -30,7 +30,7 @@ class SecurityConfig(
                 it
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/shared/**").permitAll()
-                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                     .requestMatchers("/h2-console/**").permitAll()
                     .anyRequest().authenticated()
             }
