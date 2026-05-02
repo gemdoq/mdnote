@@ -13,6 +13,7 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
       - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://everforest.iptime.org:8089/oauth/callback}
+      - TZ=Asia/Seoul
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -26,6 +27,8 @@ services:
   frontend:
     build: ./frontend
     container_name: mdnote-frontend
+    environment:
+      - TZ=Asia/Seoul
     ports:
       - "8089:80"
     depends_on:
