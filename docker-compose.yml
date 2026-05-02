@@ -31,6 +31,9 @@ services:
       - TZ=Asia/Seoul
     ports:
       - "8089:80"
+    networks:
+      - default
+      - infra-net
     depends_on:
       backend:
         condition: service_healthy
@@ -41,3 +44,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+networks:
+  default:
+  infra-net:
+    external: true
