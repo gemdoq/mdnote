@@ -11,7 +11,8 @@ class WebConfig : WebMvcConfigurer {
         private val ALLOWED_ORIGINS = arrayOf(
             "http://localhost:5173",
             "http://everforest.iptime.org:8089",
-            "https://everforest.iptime.org:8089"
+            "https://everforest.iptime.org:8089",
+            "https://mdnote.matchhub.co.kr"
         )
     }
 
