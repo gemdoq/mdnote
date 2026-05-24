@@ -39,7 +39,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      # curl 사용: busybox wget이 localhost를 IPv6(::1)로 먼저 해석하고 폴백을 안 해
+      # nginx(0.0.0.0:80 listen)에 connection refused가 떨어지는 함정 회피.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
